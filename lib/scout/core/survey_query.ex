@@ -1,6 +1,7 @@
-defmodule Scout.Survey.Query do
-  require Ecto.Query
+defmodule Scout.SurveyQuery do
   import Ecto.Query, only: [from: 2]
+  require Ecto.Query
+  alias Scout.Survey
 
   def build(params) do
     Enum.reduce(params, Scout.Survey, fn
@@ -10,6 +11,10 @@ defmodule Scout.Survey.Query do
       {"started", "+"<>t}, query  -> query |> started_after(t |> DateTime.from_iso8601() |> elem(1))
       {"finished", "-"<>t}, query -> query |> finished_before(t |> DateTime.from_iso8601() |> elem(1))
     end)
+  end
+
+  def for_update(id: id) do
+    from Survey, where: [id: ^id], lock: "FOR UPDATE", preload: :questions
   end
 
   def for_owner(query, owner_id) do

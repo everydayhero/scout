@@ -1,6 +1,10 @@
 defmodule Scout.Survey do
   use Ecto.Schema
+
   alias Ecto.Changeset
+  alias Scout.Survey
+  alias Scout.Commands.RenameSurvey
+  alias Scout.Commands.CreateSurvey
 
   @timestamps_opts [type: :utc_datetime, usec: true]
   @foreign_key_type :binary_id
@@ -17,7 +21,11 @@ defmodule Scout.Survey do
     has_many :questions, Scout.Question
   end
 
-  def insert_changeset(cmd = %Scout.Survey.Create{}) do
+  @doc """
+  Given a validated CreateSurvey struct, creates a changeset that will insert a new Survey in the database.
+  Note that the unique constraint on `name` may still cause a failure in Repo.insert.
+  """
+  def insert_changeset(cmd = %CreateSurvey{}) do
     survey_params = %{
       owner_id: cmd.owner_id,
       name: cmd.name,
@@ -31,9 +39,18 @@ defmodule Scout.Survey do
         |> Map.put(:display_index, idx)
       end
 
-    %Scout.Survey{}
+    %Survey{}
     |> Changeset.change(survey_params)
     |> Changeset.unique_constraint(:name)
     |> Changeset.put_assoc(:questions, questions)
+  end
+
+  @doc """
+  Given a validated UpdateSurvey struct, creates a changeset that will rename the survey
+  """
+  def rename_changeset(survey = %Survey{id: id}, %RenameSurvey{id: id, name: name}) do
+    survey
+    |> Changeset.change(name: name)
+    |> Changeset.unique_constraint(:name)
   end
 end

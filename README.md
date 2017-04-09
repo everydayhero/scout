@@ -440,10 +440,16 @@ query = Scout.Survey.Query.build(params)
 
 Ecto.Adapters.SQL.to_sql(:all, Scout.Repo, query)
 
-{"SELECT s0.\"id\", s0.\"owner_id\", s0.\"name\", s0.\"state\", s0.\"started_at\", s0.\"finished_at\", s0.\"inserted_at\", s0.\"updated_at\" FROM \"surveys\" AS s0 WHERE (s0.\"finished_at\" < $1) AND (s0.\"name\" LIKE $2) AND (s0.\"owner_id\" = $3) AND (s0.\"started_at\" > $4) AND (s0.\"state\" = $5)",
- [{{2018, 12, 30}, {0, 0, 0, 0}}, "%donation%",
+{
+  """
+  SELECT s0."id", s0."owner_id", s0."name", s0."state", s0."started_at", s0."finished_at", s0."inserted_at", s0."updated_at"
+  FROM "surveys" AS s0
+  WHERE (s0."finished_at" < $1) AND (s0."name" LIKE $2) AND (s0."owner_id" = $3) AND (s0."started_at" > $4) AND (s0."state" = $5)
+  """,
+  [{{2018, 12, 30}, {0, 0, 0, 0}}, "%donation%",
   <<181, 199, 207, 45, 223, 130, 66, 248, 166, 255, 249, 59, 77, 42, 57, 183>>,
-  {{2017, 1, 1}, {0, 1, 3, 0}}, "design"]}
+  {{2017, 1, 1}, {0, 1, 3, 0}}, "design"]
+}
 ```
 
 
@@ -457,7 +463,7 @@ Lets add a `:create` action that will insert a new survey:
 ```elixir
 defmodule Scout.Web.SurveyController do
   use Scout.Web, :controller
-  alias Phoenix.controller
+  alias Phoenix.Controller
   alias Plug.Conn
   alias Scout.Core
 
@@ -480,16 +486,17 @@ With the business logic in a `Scout.Core` module:
 
 ```elixir
 defmodule Scout.Core do
-  alias Ecto.Changeset
   alias Scout.Repo
-  alias Scout.Survey.{Create, Query}
+  alias Scout.Survey
   alias Scout.Util.ErrorHelpers
 
   def create_survey(params) do
-    changeset = Create.changeset(params)
-    case changeset do
-      %{valid?: true} -> Create.run(Changeset.apply_changes(changeset))
-      _ -> {:error, ErrorHelpers.changeset_errors(changeset)}
+    with {:ok, cmd} <- Scout.Survey.Create.new(params),
+         changeset = %{valid?: true} <- Survey.insert_changeset(cmd),
+         {:ok, survey} <- Repo.insert(changeset) do
+      {:ok, survey}
+    else
+      {:error, changeset} -> {:error, ErrorHelpers.changeset_errors(changeset)}
     end
   end
 end
@@ -503,11 +510,17 @@ Scout.Survey.Create is a bit like a `FormObject` pattern:
 
 ```elixir
 defmodule Scout.Survey.Create do
+  @moduledoc """
+  Defines the schema and validations for the parameters required to create a new survey.
+  Note that this doesn't define the database schema, only the structure of the external params payload.
+  """
+
   use Ecto.Schema
 
   alias Ecto.Changeset
   alias Scout.Survey.Create
 
+  @primary_key false
   embedded_schema do
     field :owner_id, :string
     field :name, :string
@@ -519,26 +532,37 @@ defmodule Scout.Survey.Create do
     end
   end
 
-  def run(_cmd = %Create{}) do
-    # TODO: map the command schema to a DB schema changeset and persist
-    %Scout.Survey{}
+  def new(params) do
+    with cs = %{valid?: true} <- validate(params) do
+      {:ok, Changeset.apply_changes(cs)}
+    else
+      changeset -> {:error, changeset}
+    end
   end
 
-  def changeset(params) do
+  defp validate(params) do
     %Create{}
-    |> Changeset.cast(params, [:owner_id, :name])
+    |> Changeset.cast(s
     |> Changeset.validate_required([:owner_id, :name])
-    |> Changeset.cast_embed(:questions, required: true, with: &question_changeset/2)
+    |> Changeset.validate_change(:owner_id, &validate_uuid/2)
+    |> Changeset.cast_embed(:questions, required: true, with: &validate_question/2)
   end
 
-  defp question_changeset(schema, params) do
+  defp validate_question(schema, params) do
     schema
     |> Changeset.cast(params, [:question, :answer_format, :options])
     |> Changeset.validate_required([:question, :answer_format])
     |> validate_options()
   end
 
-  defp validate_options(cs = %Changeset{}) do
+  defp validate_uuid(field, val) do
+    case Ecto.UUID.cast(val) do
+      :error -> [{field, "Is not a valid UUID"}]
+      {:ok, _} -> []
+    end
+  end
+
+  def validate_options(cs = %Changeset{}) do
     case Changeset.get_field(cs, :answer_format) do
       "check" ->
         cs
@@ -571,9 +595,105 @@ end
 Lets map the `Scout.Survey.Create` schema onto a Scout.Survey schema and changeset:
 
 ```elixir
-def run(_cmd = %Create{}) do
+@doc """
+Given a validated Survey.Create struct, creates a changeset that will insert a new Survey in the database.
+Note that the unique constraint on `name` may still cause a failure in Repo.insert.
+"""
+def insert_changeset(cmd = %Scout.Survey.Create{}) do
+  survey_params = %{
+    owner_id: cmd.owner_id,
+    name: cmd.name,
+    state: "design"
+  }
 
+  questions =
+    for {val, idx} <- Enum.with_index(cmd.questions) do
+      val
+      |> Map.from_struct()
+      |> Map.put(:display_index, idx)
+    end
+
+  %Scout.Survey{}
+  |> Changeset.change(survey_params)
+  |> Changeset.unique_constraint(:name)
+  |> Changeset.put_assoc(:questions, questions)
 end
 ```
 
-# Transactions and Multi
+# Updates and Transactions
+
+Inserts a pretty simple, there's not really any chance of concurrency errors except for unique constraints or check constraints.
+When it comes to updates you probably want to control the transaction boundary.
+
+```elixir
+def rename_survey(params) do
+  Repo.transaction fn ->
+    with {:ok, cmd} <- RenameSurvey.new(params),
+         survey = %Survey{} <- Repo.one(SurveyQuery.for_update(id: cmd.id)),
+         changeset = %{valid?: true} <- Survey.rename_changeset(survey, cmd),
+         {:ok, survey} <- Repo.update(changeset) do
+      survey
+    else
+      {:error, changeset} -> Repo.rollback(ErrorHelpers.changeset_errors(changeset))
+    end
+  end
+end
+```
+
+Note that on the happy path `survey` isn't wrapped in an `{:ok, survey}` tuple, and on the error path we use `rollback` with the error list.  This is because `transaction` does this automatically.
+
+Gotcha! The only way to propagate error info out of a transaction is to call `rollback` explicitly.
+Without `Repo.rollback` the error is always `{:error, :rollback}` which is not very informative.
+
+The `RenameSurvey` command is quite simple:
+
+```elixir
+defmodule Scout.Commands.RenameSurvey do
+  use Ecto.Schema
+
+  alias Ecto.Changeset
+  alias Scout.Util.ValidationHelpers
+
+  @primary_key false
+  embedded_schema do
+    field :id, :binary_id
+    field :name, :string
+  end
+
+  def new(params) do
+    with cs = %{valid?: true} <- validate(params) do
+      {:ok, Changeset.apply_changes(cs)}
+    else
+      changeset -> {:error, changeset}
+    end
+  end
+
+  defp validate(params) do
+    %__MODULE__{}
+    |> Changeset.cast(params, [:id, :name])
+    |> Changeset.validate_required([:id, :name])
+    |> Changeset.validate_change(:id, &ValidationHelpers.validate_uuid/2)
+  end
+end
+```
+
+SurveyQuery.for_update uses the `Ecto.Query.from` `lock` keyword:
+
+```elixir
+def for_update(id: id) do
+  from Survey, where: [id: ^id], lock: "FOR UPDATE", preload: :questions
+end
+```
+
+`Survey.rename_changeset` is also quite simple.
+Note the pattern matching ensures the `id` matches in both structs.
+
+```elixir
+def rename_changeset(survey = %Survey{id: id}, %RenameSurvey{id: id, name: name}) do
+  survey
+  |> Changeset.change(name: name)
+  |> Changeset.unique_constraint(:name)
+end
+```
+
+# Multi
