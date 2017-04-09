@@ -759,4 +759,32 @@ def rename_changeset(survey = %Survey{id: id}, %RenameSurvey{id: id, name: name}
 end
 ```
 
+```elixir
+iex(1)> Scout.Core.rename_survey(%{"id" => "446f7d28-9c4e-4d45-8ee3-ab4b3f6fe62b", "name" => "i like this better"})
+[debug] QUERY OK db=0.3ms
+begin []
+
+[debug] QUERY OK source="surveys" db=2.9ms decode=1.8ms
+SELECT s0."id", s0."owner_id", s0."name", s0."state", s0."started_at", s0."finished_at", s0."inserted_at", s0."updated_at"
+FROM "surveys" AS s0
+WHERE (s0."id" = $1)
+FOR UPDATE
+[<<68, 111, 125, 40, 156, 78, 77, 69, 142, 227, 171, 75, 63, 111, 230, 43>>]
+
+[debug] QUERY OK source="questions" db=4.7ms
+SELECT q0."id", q0."survey_id", q0."display_index", q0."question", q0."answer_format", q0."options", q0."inserted_at", q0."updated_at", q0."survey_id"
+FROM "questions" AS q0
+WHERE (q0."survey_id" = $1)
+ORDER BY q0."survey_id"
+[<<68, 111, 125, 40, 156, 78, 77, 69, 142, 227, 171, 75, 63, 111, 230, 43>>]
+
+[debug] QUERY OK db=0.6ms
+UPDATE "surveys"
+SET "name" = $1, "updated_at" = $2 WHERE "id" = $3
+["i like this better", {{2017, 4, 9}, {12, 30, 26, 345155}}, <<68, 111, 125, 40, 156, 78, 77, 69, 142, 227, 171, 75, 63, 111, 230, 43>>]
+
+[debug] QUERY OK db=2.2ms
+commit []
+```
+
 # Ecto Multi
