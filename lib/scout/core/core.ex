@@ -1,10 +1,7 @@
 defmodule Scout.Core do
-  alias Ecto.Changeset
-  alias Scout.Repo
-  alias Scout.Survey
-  alias Scout.SurveyQuery
-  alias Scout.Util.ErrorHelpers
+  alias Scout.{Repo, Survey, SurveyQuery}
   alias Scout.Commands.{CreateSurvey, RenameSurvey}
+  alias Scout.Util.ErrorHelpers
 
   def create_survey(params) do
     with {:ok, cmd} <- CreateSurvey.new(params),

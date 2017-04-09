@@ -387,10 +387,10 @@ Repo.all(Query.from s in Scout.Survey,
 
 Queries can be broken down into composable parts for re-use and dynamic construction:
 
-Add a `Scout.Survey.Query` module that can build a query from some params:
+Add a `Scout.SurveyQuery` module that can build a query from some params:
 
 ```elixir
-defmodule Scout.Survey.Query do
+defmodule Scout.SurveyQuery do
   require Ecto.Query
   import Ecto.Query, only: [from: 2]
 
@@ -436,7 +436,7 @@ params = %{
   "finished" => "-2018-12-30T00:00:00Z",
   "started" => "+2017-01-01T00:01:03Z"
 }
-query = Scout.Survey.Query.build(params)
+query = Scout.SurveyQuery.build(params)
 
 Ecto.Adapters.SQL.to_sql(:all, Scout.Repo, query)
 
@@ -486,12 +486,12 @@ With the business logic in a `Scout.Core` module:
 
 ```elixir
 defmodule Scout.Core do
-  alias Scout.Repo
-  alias Scout.Survey
+  alias Scout.{Repo, Survey, SurveyQuery}
+  alias Scout.Commands.{CreateSurvey, RenameSurvey}
   alias Scout.Util.ErrorHelpers
 
   def create_survey(params) do
-    with {:ok, cmd} <- Scout.Survey.Create.new(params),
+    with {:ok, cmd} <- CreateSurvey.new(params),
          changeset = %{valid?: true} <- Survey.insert_changeset(cmd),
          {:ok, survey} <- Repo.insert(changeset) do
       {:ok, survey}
@@ -502,14 +502,14 @@ defmodule Scout.Core do
 end
 ```
 
-Scout.Survey.Create is a bit like a `FormObject` pattern:
+Scout.Commands.CreateSurvey is responsible for:
 
  - Casts from plain maps to typed structs
  - Validates all required fields are present
  - Custom validation for survey question options.
 
 ```elixir
-defmodule Scout.Survey.Create do
+defmodule Scout.Commands.CreateSurvey do
   @moduledoc """
   Defines the schema and validations for the parameters required to create a new survey.
   Note that this doesn't define the database schema, only the structure of the external params payload.
@@ -518,18 +518,14 @@ defmodule Scout.Survey.Create do
   use Ecto.Schema
 
   alias Ecto.Changeset
-  alias Scout.Survey.Create
+  alias Scout.Commands.EmbeddedQuestion
+  alias Scout.Util.ValidationHelpers
 
   @primary_key false
   embedded_schema do
     field :owner_id, :string
     field :name, :string
-
-    embeds_many :questions, Question, primary_key: false do
-      field :question, :string
-      field :answer_format, :string
-      field :options, {:array, :string}
-    end
+    embeds_many :questions, EmbeddedQuestion
   end
 
   def new(params) do
@@ -541,25 +537,32 @@ defmodule Scout.Survey.Create do
   end
 
   defp validate(params) do
-    %Create{}
-    |> Changeset.cast(s
+    %__MODULE__{}
+    |> Changeset.cast(params, [:owner_id, :name])
     |> Changeset.validate_required([:owner_id, :name])
-    |> Changeset.validate_change(:owner_id, &validate_uuid/2)
-    |> Changeset.cast_embed(:questions, required: true, with: &validate_question/2)
+    |> Changeset.validate_change(:owner_id, &ValidationHelpers.validate_uuid/2)
+    |> Changeset.cast_embed(:questions, required: true, with: &EmbeddedQuestion.validate_question/2)
+  end
+end
+```
+
+```elixir
+defmodule Scout.Commands.EmbeddedQuestion do
+  use Ecto.Schema
+  alias Ecto.Changeset
+
+  @primary_key false
+  embedded_schema do
+    field :question, :string
+    field :answer_format, :string
+    field :options, {:array, :string}
   end
 
-  defp validate_question(schema, params) do
+  def validate_question(schema, params) do
     schema
     |> Changeset.cast(params, [:question, :answer_format, :options])
     |> Changeset.validate_required([:question, :answer_format])
     |> validate_options()
-  end
-
-  defp validate_uuid(field, val) do
-    case Ecto.UUID.cast(val) do
-      :error -> [{field, "Is not a valid UUID"}]
-      {:ok, _} -> []
-    end
   end
 
   def validate_options(cs = %Changeset{}) do
@@ -578,6 +581,19 @@ defmodule Scout.Survey.Create do
 end
 ```
 
+Ecto will throw an exception if unable to convert a string to a UUID, so use a custom validator to catch the problem early.
+
+```elixir
+defmodule Scout.Util.ValidationHelpers do
+  def validate_uuid(field, val) do
+    case Ecto.UUID.cast(val) do
+      :error -> [{field, "Is not a valid UUID"}]
+      {:ok, _} -> []
+    end
+  end
+end
+```
+
 get_errors is a helper to deep traverse a changeset formatting error messages:
 
 ```elixir
@@ -590,16 +606,63 @@ def get_errors(changeset = %Changeset{}) do
 end
 ```
 
+Now we can create some surveys in iex
+
+```elixir
+iex(1)> Scout.Core.create_survey(%{})
+{:error,
+ %{name: ["can't be blank"], owner_id: ["can't be blank"],
+   questions: ["can't be blank"]}}
+
+iex(9)> Scout.Core.create_survey(
+  %{
+    "name" => "My cool survey",
+    "owner_id" => Ecto.UUID.generate(),
+    "questions" => [%{"question" => "Marvel or DC", "answer_format" => "radio", "options" => ["Marvel", "DC"]}]
+  })
+
+[debug] QUERY OK db=0.2ms
+begin []
+[debug] QUERY OK db=2.0ms
+INSERT INTO "surveys" ("name","owner_id","state","inserted_at","updated_at","id") VALUES ($1,$2,$3,$4,$5,$6) ["My cool survey", <<140, 93, 2, 162, 25, 243, 75, 173, 182, 66, 45, 76, 60, 78, 8, 32>>, "design", {{2017, 4, 9}, {12, 23, 27, 641313}}, {{2017, 4, 9}, {12, 23, 27, 644702}}, <<68, 111, 125, 40, 156, 78, 77, 69, 142, 227, 171, 75, 63, 111, 230, 43>>]
+[debug] QUERY OK db=6.4ms
+INSERT INTO "questions" ("answer_format","display_index","options","question","survey_id","inserted_at","updated_at") VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING "id" ["radio", 0, ["Marvel", "DC"], "Marvel or DC", <<68, 111, 125, 40, 156, 78, 77, 69, 142, 227, 171, 75, 63, 111, 230, 43>>, {{2017, 4, 9}, {12, 23, 27, 653650}}, {{2017, 4, 9}, {12, 23, 27, 653656}}]
+[debug] QUERY OK db=2.1ms
+commit []
+
+{:ok,
+%Scout.Survey{__meta__: #Ecto.Schema.Metadata<:loaded, "surveys">,
+ id: "446f7d28-9c4e-4d45-8ee3-ab4b3f6fe62b",
+ owner_id: "8c5d02a2-19f3-4bad-b642-2d4c3c4e0820",
+ name: "My cool survey",
+ started_at: nil,
+ finished_at: nil,
+ state: "design",
+ questions: [%Scout.Question{__meta__: #Ecto.Schema.Metadata<:loaded, "questions">,
+   id: 11,
+   survey_id: "446f7d28-9c4e-4d45-8ee3-ab4b3f6fe62b",
+   display_index: 0,
+   answer_format: "radio",
+   options: ["Marvel", "DC"], question: "Marvel or DC",
+   survey: #Ecto.Association.NotLoaded<association :survey is not loaded>,
+   inserted_at: %DateTime{...},
+   updated_at: %DateTime{...}}],
+ inserted_at: %DateTime{...},  
+ updated_at: %DateTime{...}}
+}
+```
+
 # Writing Changesets to the Database
 
-Lets map the `Scout.Survey.Create` schema onto a Scout.Survey schema and changeset:
+Lets map the `Scout.Commands.CreateSurvey` schema onto a Scout.Survey schema and changeset:
+Note that we're using `change` and `put_assoc` instead of `cast` and `cast_assoc` because the data validation has already happened.
 
 ```elixir
 @doc """
 Given a validated Survey.Create struct, creates a changeset that will insert a new Survey in the database.
 Note that the unique constraint on `name` may still cause a failure in Repo.insert.
 """
-def insert_changeset(cmd = %Scout.Survey.Create{}) do
+def insert_changeset(cmd = %CreateSurvey{}) do
   survey_params = %{
     owner_id: cmd.owner_id,
     name: cmd.name,
@@ -696,4 +759,4 @@ def rename_changeset(survey = %Survey{id: id}, %RenameSurvey{id: id, name: name}
 end
 ```
 
-# Multi
+# Ecto Multi
