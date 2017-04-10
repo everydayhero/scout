@@ -14,5 +14,4 @@ defmodule Scout.Repo.Migrations.AddSurveysTable do
 
     create unique_index(:surveys, [:name])
   end
-
 end

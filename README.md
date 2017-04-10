@@ -6,9 +6,11 @@ Protoss unit highly skilled at conducting Surveys.
 
 `phx.new scout --binary-id --no-html --no-brunch`
 
-`cd scout`
-`mix ecto.create`
-`mix phoenix.server`
+```
+cd scout
+mix ecto.create
+mix phoenix.server
+```
 
 
 # Packages

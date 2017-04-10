@@ -17,6 +17,10 @@ defmodule Scout.Commands.CreateSurvey do
     embeds_many :questions, EmbeddedQuestion
   end
 
+  @doc """
+  Create a new CreateSurvey struct from string-keyed map of params
+  If validations fails, result is `{:error, errors}`, otherwise returns {:ok, struct}
+  """
   def new(params) do
     with cs = %{valid?: true} <- validate(params) do
       {:ok, Changeset.apply_changes(cs)}
