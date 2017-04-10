@@ -11,12 +11,12 @@ Cover the 5 core aspects of the Ecto library:
 
 Add tables, indexes.
 Show how to run direct SQL or fragments.
-Provides transaction/rollback functionality.
 
 ## Repo
 
 Is the interface to the DB connection.
 Can perform bulk operations without the need for a schema definition.
+Provides transaction/rollback functionality.
 
 ## Schema
 
