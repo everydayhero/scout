@@ -2,6 +2,8 @@
 
 Protoss unit highly skilled at conducting Surveys.
 
+
+
 # Getting Started
 
 `phx.new scout --binary-id --no-html --no-brunch`
@@ -790,3 +792,177 @@ commit []
 ```
 
 # Ecto Multi
+
+Scoped transactions can work well, but there are some tradeoffs.
+A connection is taken from the pool for the duration of the transaction, you need to take care not to do any blocking API calls while the transaction is open.
+
+Ecto provides an alternative for composable updates similar to composable queries, called `Multi`.
+
+Multi is a collection of named changesets that will be executed in a transaction.
+The trick is that you can build the Multi from smaller changesets, then finally submit it to the Repo.
+
+Lets add survey responses to the database:
+
+```elixir
+defmodule Scout.Repo.Migrations.AddResponsesTable do
+  use Ecto.Migration
+
+  def change do
+    create table(:responses) do
+      add :survey_id, references(:surveys, type: :uuid, on_delete: :delete_all)
+      add :respondant_email, :string, required: true
+      add :answers, :jsonb, required: true
+      timestamps()
+    end
+
+    create index(:responses, [:survey_id])
+    create index(:responses, [:respondant_email])
+    create unique_index(:responses, [:survey_id, :respondant_email])
+  end
+end
+```
+
+And a counter cache for responses on the `surveys` table:
+
+```elixir
+defmodule Scout.Repo.Migrations.AddSurveyResponseCountField do
+  use Ecto.Migration
+
+  def change do
+    alter table(:surveys) do
+      add :response_count, :integer, null: false, default: 0
+    end
+  end
+end
+```
+
+Add the new relation and counter to the `Survey` schema:
+
+```elixir
+schema "surveys" do
+  field :owner_id, :binary_id
+  field :name, :string
+  field :state, :string
+  field :started_at, :utc_datetime
+  field :finished_at, :utc_datetime
+  field :response_count, :integer
+  timestamps()
+
+  has_many :questions, Scout.Question
+  has_many :responses, Scout.Response
+end
+```
+
+Define the responses schema:
+
+```elixir
+schema "responses" do
+  belongs_to :survey, Scout.Survey
+  field :respondant_email, :string
+  field :answers, {:array, :string}
+  timestamps()
+end
+```
+
+Add a command to define the request parameters:
+
+```elixir
+defmodule Scout.Commands.AddSurveyResponse do
+use Ecto.Schema
+alias Ecto.Changeset
+alias Scout.Util.ValidationHelpers
+
+@primary_key false
+embedded_schema do
+  field :survey_id, :binary_id
+  field :respondant_email, :string
+  field :answers, {:array, :string}
+end
+
+def new(params) do
+  with cs = %{valid?: true} <- validate(params) do
+    {:ok, Changeset.apply_changes(cs)}
+  else
+    changeset -> {:error, changeset}
+  end
+end
+
+defp validate(params) do
+  %__MODULE__{}
+  |> Changeset.cast(params, [:survey_id, :respondant_email, :answers])
+  |> Changeset.validate_required([:survey_id, :respondant_email, :answers])
+  |> Changeset.validate_change(:survey_id, &ValidationHelpers.validate_uuid/2)
+  |> Changeset.validate_format(:respondant_email, ~r/@/)
+end
+```
+
+Add a new changeset function in the survey module to increment the response counter:
+
+```elixir
+def increment_response_count_changeset(
+    survey = %Survey{id: id, response_count: count, state: state},
+    %AddSurveyResponse{survey_id: id}) do
+
+  survey
+  |> Changeset.change(response_count: count+1)
+  |> validate_survey_running(state)
+end
+
+defp validate_survey_running(changeset, "running"), do: changeset
+defp validate_survey_running(changeset, _) do
+  Changeset.add_error(changeset, :state, "Survey is not running")
+end
+```
+
+Add a changeset function in the `Response` module to insert a new response:
+
+```elixir
+def insert_changeset(%Survey{id: id}, cmd = %AddSurveyResponse{survey_id: id}) do
+  response_params = Map.take(cmd, [:survey_id, :respondant_email, :answers])
+
+  index_name = :responses_survey_id_respondant_email_index
+
+  %__MODULE__{}
+  |> Changeset.change(response_params)
+  |> Changeset.unique_constraint(:respondant_email, name: index_name)
+end
+```
+
+And tie is all together with a new function in core:
+
+```elixir
+def add_survey_response(params) do
+  with {:ok, cmd} <- AddSurveyResponse.new(params),
+       {:ok, survey} <- find_survey_by_id(cmd.survey_id) do
+    Multi.new()
+    |> Multi.insert(:response, Response.insert_changeset(survey, cmd))
+    |> Multi.update(:survey, Survey.increment_response_count_changeset(survey, cmd))
+    |> run_multi()
+  else
+    {:error, changeset = %Changeset{}} -> {:error, ErrorHelpers.changeset_errors(changeset)}
+    {:error, errors} -> {:error, errors}
+  end
+end
+```
+
+`find_survey_by_id` is a helper that wraps a call to `Repo.get` in an error tuple:
+```elixir
+def find_survey_by_id(id) do
+  case Repo.get(Survey, id) do
+    nil -> {:error, "Survey not found"}
+    survey -> {:ok, survey}
+  end
+end
+```
+
+`run_multi` is a local helper to execute the `Multi` and convert any errors to the usual {:error, errors} format:
+
+```elixir
+defp run_multi(multi = %Multi{}) do
+  case Repo.transaction(multi) do
+    {:ok, results} -> {:ok, results}
+    {:error, operation, changeset, _changes} ->
+      {:error, %{operation => ErrorHelpers.changeset_errors(changeset)}}
+  end
+end
+```

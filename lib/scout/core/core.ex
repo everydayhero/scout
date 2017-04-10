@@ -1,7 +1,9 @@
 defmodule Scout.Core do
-  alias Scout.{Repo, Survey, SurveyQuery}
-  alias Scout.Commands.{CreateSurvey, RenameSurvey}
+  alias Scout.{Repo, Survey, SurveyQuery, Response}
+  alias Scout.Commands.{CreateSurvey, RenameSurvey, AddSurveyResponse}
   alias Scout.Util.ErrorHelpers
+  alias Ecto.Changeset
+  alias Ecto.Multi
 
   @doc """
   Create a survey given a string-keyed map of params
@@ -26,6 +28,18 @@ defmodule Scout.Core do
       {:ok, survey}
     else
       {:error, changeset} -> {:error, ErrorHelpers.changeset_errors(changeset)}
+    end
+  end
+
+  @doc """
+  Find survey by id.
+
+  Returns {:ok, survey} on success, {:error, reason} otherwise.
+  """
+  def find_survey_by_id(id) do
+    case Repo.get(Survey, id) do
+      nil -> {:error, "Survey not found"}
+      survey -> {:ok, survey}
     end
   end
 
@@ -67,6 +81,32 @@ defmodule Scout.Core do
       else
         {:error, changeset} -> Repo.rollback(ErrorHelpers.changeset_errors(changeset))
       end
+    end
+  end
+
+  @doc """
+  Records a survey response.
+
+  returns {:ok, %{survey: survey, response: response} on success, {:error, errors} on failure.
+  """
+  def add_survey_response(params) do
+    with {:ok, cmd} <- AddSurveyResponse.new(params),
+         {:ok, survey} <- find_survey_by_id(cmd.survey_id) do
+      Multi.new()
+      |> Multi.insert(:response, Response.insert_changeset(survey, cmd))
+      |> Multi.update(:survey, Survey.increment_response_count_changeset(survey, cmd))
+      |> run_multi()
+    else
+      {:error, changeset = %Changeset{}} -> {:error, ErrorHelpers.changeset_errors(changeset)}
+      {:error, errors} -> {:error, errors}
+    end
+  end
+
+  defp run_multi(multi = %Multi{}) do
+    case Repo.transaction(multi) do
+      {:ok, results} -> {:ok, results}
+      {:error, operation, changeset, _changes} ->
+        {:error, %{operation => ErrorHelpers.changeset_errors(changeset)}}
     end
   end
 end

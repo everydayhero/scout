@@ -3,8 +3,7 @@ defmodule Scout.Survey do
 
   alias Ecto.Changeset
   alias Scout.Survey
-  alias Scout.Commands.RenameSurvey
-  alias Scout.Commands.CreateSurvey
+  alias Scout.Commands.{AddSurveyResponse, CreateSurvey, RenameSurvey}
 
   @timestamps_opts [type: :utc_datetime, usec: true]
   @foreign_key_type :binary_id
@@ -16,9 +15,11 @@ defmodule Scout.Survey do
     field :state, :string
     field :started_at, :utc_datetime
     field :finished_at, :utc_datetime
+    field :response_count, :integer
     timestamps()
 
     has_many :questions, Scout.Question
+    has_many :responses, Scout.Response
   end
 
   @doc """
@@ -52,5 +53,19 @@ defmodule Scout.Survey do
     survey
     |> Changeset.change(name: name)
     |> Changeset.unique_constraint(:name)
+  end
+
+  def increment_response_count_changeset(
+      survey = %Survey{id: id, response_count: count, state: state},
+      %AddSurveyResponse{survey_id: id}) do
+
+    survey
+    |> Changeset.change(response_count: count+1)
+    |> validate_survey_running(state)
+  end
+
+  defp validate_survey_running(changeset, "running"), do: changeset
+  defp validate_survey_running(changeset, _) do
+    Changeset.add_error(changeset, :state, "Survey is not running")
   end
 end

@@ -58,3 +58,15 @@ Repo.insert_all(
       updated_at: now
     }
   ])
+
+  Repo.insert_all(
+    "responses",
+    [
+      %{
+        survey_id: donation_survey_id,
+        respondant_email: "Reece.Pondant@gmail.com",
+        answers: ["Cancer ward"],
+        inserted_at: now,
+        updated_at: now
+      }
+    ])
