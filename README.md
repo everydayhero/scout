@@ -3,12 +3,44 @@
 Protoss unit highly skilled at conducting Surveys.
 
 
+# Learning Objectives
+
+Cover the 5 core aspects of the Ecto library:
+
+## Migrations
+
+Add tables, indexes.
+Show how to run direct SQL or fragments.
+Provides transaction/rollback functionality.
+
+## Repo
+
+Is the interface to the DB connection.
+Can perform bulk operations without the need for a schema definition.
+
+## Schema
+
+Defines typed structures.
+Can be optionally mapped to database tables, but are generally useful anywhere you want typed fields.
+
+## Query
+
+Ecto separates query construction from execution.
+This allows for highly composable queries.
+Use a `reduce` function to convert dynamic query params into a query.
+
+## Changeset
+
+Mechanism for validating inputs, and changes to structs.
+Logical change tracking for immutable data structures.
+Can be composed into `Multi` for transactional semantics.
+
 
 # Getting Started
 
-`phx.new scout --binary-id --no-html --no-brunch`
-
 ```
+mix archive.install https://github.com/phoenixframework/archives/raw/master/phx_new.ez
+mix phx.new scout --binary-id --no-html --no-brunch
 cd scout
 mix ecto.create
 mix phoenix.server
@@ -57,7 +89,7 @@ end
 config :scout, Scout.Repo,
   adapter: Ecto.Adapters.Postgres,
   username: "postgres",
-  password: "postgres",
+  password: "password",
   database: "scout_dev",
   hostname: "localhost",
   pool_size: 10
