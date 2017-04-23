@@ -1,7 +1,7 @@
 defmodule Scout.Response do
   use Ecto.Schema
   alias Ecto.Changeset
-  alias Scout.Survey
+  alias Scout.Response
   alias Scout.Commands.AddSurveyResponse
 
   @timestamps_opts [type: :utc_datetime, usec: true]
@@ -14,12 +14,10 @@ defmodule Scout.Response do
     timestamps()
   end
 
-  def insert_changeset(%Survey{id: id}, cmd = %AddSurveyResponse{survey_id: id}) do
+  def insert_changeset(cmd = %AddSurveyResponse{}) do
     response_params = Map.take(cmd, [:survey_id, :respondant_email, :answers])
-
     index_name = :responses_survey_id_respondant_email_index
-
-    %__MODULE__{}
+    %Response{}
     |> Changeset.change(response_params)
     |> Changeset.unique_constraint(:respondant_email, name: index_name)
   end

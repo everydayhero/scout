@@ -7,8 +7,11 @@ defmodule Scout.Commands.CreateSurvey do
   use Ecto.Schema
 
   alias Ecto.Changeset
+  alias Ecto.Multi
   alias Scout.Commands.EmbeddedQuestion
+  alias Scout.Commands.CreateSurvey
   alias Scout.Util.ValidationHelpers
+  alias Scout.Survey
 
   @primary_key false
   embedded_schema do
@@ -35,5 +38,10 @@ defmodule Scout.Commands.CreateSurvey do
     |> Changeset.validate_required([:owner_id, :name])
     |> Changeset.validate_change(:owner_id, &ValidationHelpers.validate_uuid/2)
     |> Changeset.cast_embed(:questions, required: true, with: &EmbeddedQuestion.validate_question/2)
+  end
+
+  def run(cmd = %CreateSurvey{}) do
+    Multi.new()
+    |> Multi.insert(:survey, Survey.insert_changeset(cmd))
   end
 end

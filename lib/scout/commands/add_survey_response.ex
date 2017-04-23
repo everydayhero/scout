@@ -1,7 +1,11 @@
   defmodule Scout.Commands.AddSurveyResponse do
   use Ecto.Schema
   alias Ecto.Changeset
+  alias Ecto.Multi
   alias Scout.Util.ValidationHelpers
+  alias Scout.Response
+  alias Scout.Survey
+  alias Scout.Commands.AddSurveyResponse
 
   @primary_key false
   embedded_schema do
@@ -24,5 +28,12 @@
     |> Changeset.validate_required([:survey_id, :respondant_email, :answers])
     |> Changeset.validate_change(:survey_id, &ValidationHelpers.validate_uuid/2)
     |> Changeset.validate_format(:respondant_email, ~r/@/)
+  end
+
+  def run(cmd = %AddSurveyResponse{survey_id: id}, survey = %Survey{id: id}) do
+    Multi.new()
+    |> Multi.insert(:response, Response.insert_changeset(cmd))
+    |> Multi.update(:survey, Survey.increment_response_count_changeset(survey))
+    # |> Multi.update_all(:survey2, Survey.increment_response_count_query(id: survey.id), [])
   end
 end

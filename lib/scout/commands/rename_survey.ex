@@ -6,7 +6,12 @@ defmodule Scout.Commands.RenameSurvey do
   use Ecto.Schema
 
   alias Ecto.Changeset
+  alias Scout.Commands.RenameSurvey
   alias Scout.Util.ValidationHelpers
+  alias Scout.Util.ErrorHelpers
+  alias Scout.Repo
+  alias Scout.Survey
+  alias Scout.SurveyQuery
 
   @primary_key false
   embedded_schema do
@@ -32,9 +37,21 @@ defmodule Scout.Commands.RenameSurvey do
   end
 
   defp validate(params) do
-    %__MODULE__{}
+    %RenameSurvey{}
     |> Changeset.cast(params, [:id, :name])
     |> Changeset.validate_required([:id, :name])
     |> Changeset.validate_change(:id, &ValidationHelpers.validate_uuid/2)
+  end
+
+  def run(cmd = %RenameSurvey{}) do
+    Repo.transaction fn ->
+      with survey = %Survey{} <- Repo.one(SurveyQuery.for_update(id: cmd.id)),
+           changeset <- Survey.rename_changeset(survey, cmd),
+           {:ok, survey} <- Repo.update(changeset) do
+        %{survey: survey}
+      else
+        {:error, changeset} -> Repo.rollback(ErrorHelpers.changeset_errors(changeset))
+      end
+    end
   end
 end

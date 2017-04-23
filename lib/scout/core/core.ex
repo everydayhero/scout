@@ -4,6 +4,7 @@ defmodule Scout.Core do
   alias Scout.Util.ErrorHelpers
   alias Ecto.Changeset
   alias Ecto.Multi
+  require Ecto.Query
 
   @doc """
   Create a survey given a string-keyed map of params
@@ -22,10 +23,10 @@ defmodule Scout.Core do
   Returns {:error, errors} on failure, or {:ok, survey} on success.
   """
   def create_survey(params) do
-    with {:ok, cmd} <- CreateSurvey.new(params),
-         changeset = %{valid?: true} <- Survey.insert_changeset(cmd),
-         {:ok, survey} <- Repo.insert(changeset) do
-      {:ok, survey}
+    with {:ok, cmd} <- CreateSurvey.new(params) do
+      cmd
+      |> CreateSurvey.run()
+      |> run_multi()
     else
       {:error, changeset} -> {:error, ErrorHelpers.changeset_errors(changeset)}
     end
@@ -72,15 +73,10 @@ defmodule Scout.Core do
    - "name" : The new name of the survey
   """
   def rename_survey(params) do
-    Repo.transaction fn ->
-      with {:ok, cmd} <- RenameSurvey.new(params),
-           survey = %Survey{} <- Repo.one(SurveyQuery.for_update(id: cmd.id)),
-           changeset = %{valid?: true} <- Survey.rename_changeset(survey, cmd),
-           {:ok, survey} <- Repo.update(changeset) do
-        survey
-      else
-        {:error, changeset} -> Repo.rollback(ErrorHelpers.changeset_errors(changeset))
-      end
+    with {:ok, cmd} <- RenameSurvey.new(params) do
+      RenameSurvey.run(cmd)
+    else
+      {:error, changeset} -> {:error, ErrorHelpers.changeset_errors(changeset)}
     end
   end
 
@@ -92,9 +88,8 @@ defmodule Scout.Core do
   def add_survey_response(params) do
     with {:ok, cmd} <- AddSurveyResponse.new(params),
          {:ok, survey} <- find_survey_by_id(cmd.survey_id) do
-      Multi.new()
-      |> Multi.insert(:response, Response.insert_changeset(survey, cmd))
-      |> Multi.update(:survey, Survey.increment_response_count_changeset(survey, cmd))
+      cmd
+      |> AddSurveyResponse.run(survey)
       |> run_multi()
     else
       {:error, changeset = %Changeset{}} -> {:error, ErrorHelpers.changeset_errors(changeset)}
