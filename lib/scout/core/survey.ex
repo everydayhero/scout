@@ -16,6 +16,7 @@ defmodule Scout.Survey do
     field :started_at, :utc_datetime
     field :finished_at, :utc_datetime
     field :response_count, :integer
+    field :version, :integer, default: 1
     timestamps()
 
     has_many :questions, Scout.Question
@@ -60,6 +61,7 @@ defmodule Scout.Survey do
       %AddSurveyResponse{survey_id: id}) do
 
     survey
+    |> Changeset.optimistic_lock(:version)
     |> Changeset.change(response_count: count+1)
     |> validate_survey_running(state)
   end
