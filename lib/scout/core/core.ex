@@ -58,9 +58,11 @@ defmodule Scout.Core do
                  Filters for surveys finished before the given date-time.
   """
   def find_surveys(query_params) do
-    query_params
-    |> SurveyQuery.build()
-    |> Repo.all()
+    with query = %Ecto.Query{} <- SurveyQuery.build(query_params) do
+      Repo.all(query)
+    else
+      {:error, errors} -> {:error, errors}
+    end
   end
 
 
@@ -71,6 +73,8 @@ defmodule Scout.Core do
 
    - "id"   : The survey id
    - "name" : The new name of the survey
+
+  Returns {:ok, %{survey: %Scout.Survey{}}} on succes, {:error, errors} on failure.
   """
   def rename_survey(params) do
     with {:ok, cmd} <- RenameSurvey.new(params) do

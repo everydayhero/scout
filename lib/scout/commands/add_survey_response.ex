@@ -1,11 +1,12 @@
   defmodule Scout.Commands.AddSurveyResponse do
   use Ecto.Schema
+
   alias Ecto.Changeset
   alias Ecto.Multi
+  alias Scout.Commands.AddSurveyResponse
   alias Scout.Util.ValidationHelpers
   alias Scout.Response
   alias Scout.Survey
-  alias Scout.Commands.AddSurveyResponse
 
   @primary_key false
   embedded_schema do

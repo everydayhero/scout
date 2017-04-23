@@ -16,7 +16,7 @@ defmodule Scout.Core.Test do
   end
 
   describe "Create survey" do
-    test "With valid params" do
+    test "with valid params" do
       {:ok, %{survey: survey}} = Scout.Core.create_survey(@create_params)
       assert %{
         name: "my survey",
@@ -24,7 +24,7 @@ defmodule Scout.Core.Test do
       } = survey
     end
 
-    test "With invalid params" do
+    test "with invalid params" do
       assert {
         :error,
         %{name: ["can't be blank"],
@@ -39,13 +39,37 @@ defmodule Scout.Core.Test do
       %{survey: fixture(:survey, %{"name" => "find by ID survey"})}
     end
 
-    test "With valid ID", %{survey: %{id: id}} do
+    test "with valid ID", %{survey: %{id: id}} do
       {:ok, survey} = Scout.Core.find_survey_by_id(id)
       assert %Scout.Survey{id: ^id, name: "find by ID survey"} = survey
     end
 
-    test "With invalid ID" do
+    test "with invalid ID" do
       assert {:error, "Survey not found"} = Scout.Core.find_survey_by_id(Ecto.UUID.generate())
+    end
+  end
+
+  describe "Search for survey" do
+    setup do
+      fixture(:survey, %{"owner_id" => "3345c1b0-6b91-4fdb-bd90-7c584f7e90eb", "name" => "AA"})
+      fixture(:survey, %{"owner_id" => "3345c1b0-6b91-4fdb-bd90-7c584f7e90eb", "name" => "AB"})
+      fixture(:survey, %{"owner_id" => "c522e0e7-712c-4b67-9c6e-38820f7ad2e5", "name" => "BB"})
+      :ok
+    end
+
+    test "by owner" do
+      results = Scout.Core.find_surveys(%{"owner" => "3345c1b0-6b91-4fdb-bd90-7c584f7e90eb"})
+      assert ["AA", "AB"] = (results |> Enum.map(&Map.get(&1, :name)) |> Enum.sort())
+    end
+
+    test "by name" do
+      results = Scout.Core.find_surveys(%{"name" => "A%"})
+      assert ["AA", "AB"] = (results |> Enum.map(&Map.get(&1, :name)) |> Enum.sort())
+    end
+
+    test "with invalid params" do
+      assert {:error, details} = Scout.Core.find_surveys(%{"not-a-valid-param" => 12345})
+      assert %{"not-a-valid-param" => "invalid parameter"} = details
     end
   end
 

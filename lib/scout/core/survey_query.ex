@@ -4,12 +4,13 @@ defmodule Scout.SurveyQuery do
   alias Scout.Survey
 
   def build(params) do
-    Enum.reduce(params, Scout.Survey, fn
-      {"owner", id}, query        -> query |> for_owner(id)
-      {"name", pattern}, query    -> query |> name_like(pattern)
-      {"state", state}, query     -> query |> in_state(state)
-      {"started", "+"<>t}, query  -> query |> started_after(t |> DateTime.from_iso8601() |> elem(1))
-      {"finished", "-"<>t}, query -> query |> finished_before(t |> DateTime.from_iso8601() |> elem(1))
+    Enum.reduce_while(params, Scout.Survey, fn
+      {"owner", id}, query        -> {:cont, query |> for_owner(id)}
+      {"name", pattern}, query    -> {:cont, query |> name_like(pattern)}
+      {"state", state}, query     -> {:cont, query |> in_state(state)}
+      {"started", "+"<>t}, query  -> {:cont, query |> started_after(t |> DateTime.from_iso8601() |> elem(1))}
+      {"finished", "-"<>t}, query -> {:cont, query |> finished_before(t |> DateTime.from_iso8601() |> elem(1))}
+      {other, _}, _query          -> {:halt, {:error, %{other => "invalid parameter"}}}
     end)
   end
 
