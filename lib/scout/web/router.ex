@@ -1,5 +1,5 @@
 defmodule Scout.Web.Router do
-  use Scout.Web, :router
+  use Phoenix.Router
 
   pipeline :api do
     plug :accepts, ["json"]

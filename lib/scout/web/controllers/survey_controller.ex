@@ -1,16 +1,19 @@
 defmodule Scout.Web.SurveyController do
-  use Scout.Web, :controller
+  use Scout.Web.Controller
+
+  alias Plug.Conn
+  alias Phoenix.Controller
 
   def create(conn, params) do
     with {:ok, survey} <- Scout.Core.create_survey(params) do
       conn
-      |> Plug.Conn.put_status(201)
-      |> Phoenix.Controller.json(Map.from_struct(survey))
+      |> Conn.put_status(201)
+      |> Controller.json(Map.from_struct(survey))
     else
       {:error, errors} ->
         conn
-        |> Plug.Conn.put_status(422)
-        |> Phoenix.Controller.json(%{errors: errors})
+        |> Conn.put_status(422)
+        |> Controller.json(%{errors: errors})
     end
   end
 end

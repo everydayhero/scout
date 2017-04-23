@@ -1,10 +1,8 @@
 defmodule Scout.Core do
-  alias Scout.{Repo, Survey, SurveyQuery, Response}
+  alias Scout.{Repo, Survey, SurveyQuery}
   alias Scout.Commands.{CreateSurvey, RenameSurvey, AddSurveyResponse}
   alias Scout.Util.ErrorHelpers
-  alias Ecto.Changeset
-  alias Ecto.Multi
-  require Ecto.Query
+  alias Ecto.{Changeset, Multi, Query}
 
   @doc """
   Create a survey given a string-keyed map of params
@@ -58,7 +56,7 @@ defmodule Scout.Core do
                  Filters for surveys finished before the given date-time.
   """
   def find_surveys(query_params) do
-    with query = %Ecto.Query{} <- SurveyQuery.build(query_params) do
+    with query = %Query{} <- SurveyQuery.build(query_params) do
       Repo.all(query)
     else
       {:error, errors} -> {:error, errors}

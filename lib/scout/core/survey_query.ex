@@ -1,6 +1,7 @@
 defmodule Scout.SurveyQuery do
-  import Ecto.Query, only: [from: 2]
   require Ecto.Query
+  import Ecto.Query, only: [from: 2]
+  
   alias Scout.Survey
 
   def build(params) do

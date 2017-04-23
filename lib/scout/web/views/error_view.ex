@@ -1,5 +1,5 @@
 defmodule Scout.Web.ErrorView do
-  use Scout.Web, :view
+  use Scout.Web.View
 
   def render("404.json", _assigns) do
     %{errors: %{detail: "Page not found"}}

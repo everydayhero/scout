@@ -6,10 +6,8 @@ defmodule Scout.Commands.CreateSurvey do
 
   use Ecto.Schema
 
-  alias Ecto.Changeset
-  alias Ecto.Multi
-  alias Scout.Commands.EmbeddedQuestion
-  alias Scout.Commands.CreateSurvey
+  alias Ecto.{Changeset, Multi}
+  alias Scout.Commands.{CreateSurvey, EmbeddedQuestion}
   alias Scout.Util.ValidationHelpers
   alias Scout.Survey
 
@@ -22,7 +20,7 @@ defmodule Scout.Commands.CreateSurvey do
 
   @doc """
   Create a new CreateSurvey struct from string-keyed map of params
-  If validations fails, result is `{:error, errors}`, otherwise returns {:ok, struct}
+  If validations fails, result is `{:error, %Changeset{}}`, otherwise returns {:ok, %CreateSurvey{}}
   """
   def new(params) do
     with cs = %{valid?: true} <- validate(params) do
@@ -33,13 +31,19 @@ defmodule Scout.Commands.CreateSurvey do
   end
 
   defp validate(params) do
-    %__MODULE__{}
+    %CreateSurvey{}
     |> Changeset.cast(params, [:owner_id, :name])
     |> Changeset.validate_required([:owner_id, :name])
     |> Changeset.validate_change(:owner_id, &ValidationHelpers.validate_uuid/2)
     |> Changeset.cast_embed(:questions, required: true, with: &EmbeddedQuestion.validate_question/2)
   end
 
+  @doc """
+  Runs a CreateSurvey command
+
+  Returns an Ecto.Multi representing the operation/s that must happen to create a new Survey.
+  The multi should be run by the callng code using Repo.transaction or merged into a larger Multi as needed.
+  """
   def run(cmd = %CreateSurvey{}) do
     Multi.new()
     |> Multi.insert(:survey, Survey.insert_changeset(cmd))
