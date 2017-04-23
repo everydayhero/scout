@@ -45,7 +45,11 @@ defmodule Scout.Core.Test do
     end
 
     test "with invalid ID" do
-      assert {:error, "Survey not found"} = Scout.Core.find_survey_by_id(Ecto.UUID.generate())
+      assert {:error, %{id: "Survey not found"}} = Scout.Core.find_survey_by_id(Ecto.UUID.generate())
+    end
+
+    test "with wrong data type" do
+      assert {:error, %{id: "Is not a valid UUID"}} = Scout.Core.find_survey_by_id(123)
     end
   end
 
@@ -117,7 +121,7 @@ defmodule Scout.Core.Test do
         "respondant_email" => "Reece.Pondant@gmail.com",
         "answers" => ["DC"]
       }
-      assert {:error, "Survey not found"} = Scout.Core.add_survey_response(response_params)
+      assert {:error, %{id: "Survey not found"}} = Scout.Core.add_survey_response(response_params)
     end
 
     test "when respondant already responded", %{survey: %{id: id}} do

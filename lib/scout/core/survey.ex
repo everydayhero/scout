@@ -1,6 +1,8 @@
 defmodule Scout.Survey do
   use Ecto.Schema
 
+  require Ecto.Query, as: Query
+
   alias Ecto.Changeset
   alias Scout.Survey
   alias Scout.Commands.{CreateSurvey, RenameSurvey}
@@ -69,8 +71,7 @@ defmodule Scout.Survey do
   end
 
   def increment_response_count_query(id: id) do
-    require Ecto.Query
-    Ecto.Query.from(
+    Query.from(
       Survey,
       where: [id: ^id],
       update: [inc: [response_count: 1],
