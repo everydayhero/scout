@@ -526,11 +526,27 @@ defmodule Scout.Core do
   alias Scout.Commands.{CreateSurvey, RenameSurvey}
   alias Scout.Util.ErrorHelpers
 
+  @doc """
+  Create a survey given a string-keyed map of params
+
+  Example Params:
+
+      %{
+        "name" => "my survey",
+        "owner_id" => "234-234235-23123",
+        "questions" => [
+          %{"question" => "Marvel or DC?", "answer_format" => "radio", "options" => ["Marvel", "DC"]},
+          %{"question" => "Daytime phone number", "answer_format" => "text"}
+        ]
+      }
+
+  Returns {:error, errors} on failure, or {:ok, survey} on success.
+  """
   def create_survey(params) do
-    with {:ok, cmd} <- CreateSurvey.new(params),
-         changeset = %{valid?: true} <- Survey.insert_changeset(cmd),
-         {:ok, survey} <- Repo.insert(changeset) do
-      {:ok, survey}
+    with {:ok, cmd} <- CreateSurvey.new(params) do
+      cmd
+      |> CreateSurvey.run()
+      |> Repo.multi_transaction()
     else
       {:error, changeset} -> {:error, ErrorHelpers.changeset_errors(changeset)}
     end
@@ -553,9 +569,10 @@ defmodule Scout.Commands.CreateSurvey do
 
   use Ecto.Schema
 
-  alias Ecto.Changeset
-  alias Scout.Commands.EmbeddedQuestion
+  alias Ecto.{Changeset, Multi}
+  alias Scout.Commands.{CreateSurvey, EmbeddedQuestion}
   alias Scout.Util.ValidationHelpers
+  alias Scout.Survey
 
   @primary_key false
   embedded_schema do
@@ -564,26 +581,46 @@ defmodule Scout.Commands.CreateSurvey do
     embeds_many :questions, EmbeddedQuestion
   end
 
+  @doc """
+  Create a new CreateSurvey struct from string-keyed map of params
+  If validations fails, result is `{:error, %Changeset{}}`, otherwise returns {:ok, %CreateSurvey{}}
+  """
   def new(params) do
-    with cs = %{valid?: true} <- validate(params) do
-      {:ok, Changeset.apply_changes(cs)}
+    changeset = validate(params)
+    if changeset.valid? do
+      {:ok, Changeset.apply_changes(changeset)}
     else
-      changeset -> {:error, changeset}
+      {:error, changeset}
     end
   end
 
   defp validate(params) do
-    %__MODULE__{}
+    %CreateSurvey{}
     |> Changeset.cast(params, [:owner_id, :name])
     |> Changeset.validate_required([:owner_id, :name])
     |> Changeset.validate_change(:owner_id, &ValidationHelpers.validate_uuid/2)
     |> Changeset.cast_embed(:questions, required: true, with: &EmbeddedQuestion.validate_question/2)
+  end
+
+  @doc """
+  Runs a CreateSurvey command
+
+  Returns an Ecto.Multi representing the operation/s that must happen to create a new Survey.
+  The multi should be run by the callng code using Repo.transaction or merged into a larger Multi as needed.
+  """
+  def run(cmd = %CreateSurvey{}) do
+    Multi.new()
+    |> Multi.insert(:survey, Survey.insert_changeset(cmd))
   end
 end
 ```
 
 ```elixir
 defmodule Scout.Commands.EmbeddedQuestion do
+  @moduledoc """
+  Defines the schema and validations for a survey question that may be embedded within another command.
+  """
+
   use Ecto.Schema
   alias Ecto.Changeset
 
@@ -594,6 +631,9 @@ defmodule Scout.Commands.EmbeddedQuestion do
     field :options, {:array, :string}
   end
 
+  @doc """
+  Validation function that may be used in a call to Changeset.cast_assoc, or Changeset.cast_embed
+  """
   def validate_question(schema, params) do
     schema
     |> Changeset.cast(params, [:question, :answer_format, :options])
@@ -601,6 +641,13 @@ defmodule Scout.Commands.EmbeddedQuestion do
     |> validate_options()
   end
 
+  @doc """
+  Custom validation function for the `options` key in a question params map.
+
+  For checkbox questions, there must be at least one options
+  For Radio/Select questions, there must be at least two options
+  Otherwise (free text), no options validation applies
+  """
   def validate_options(cs = %Changeset{}) do
     case Changeset.get_field(cs, :answer_format) do
       "check" ->
@@ -630,10 +677,10 @@ defmodule Scout.Util.ValidationHelpers do
 end
 ```
 
-get_errors is a helper to deep traverse a changeset formatting error messages:
+`ErrorHelpers.changeset_errors` is a helper to deep traverse a changeset formatting error messages:
 
 ```elixir
-def get_errors(changeset = %Changeset{}) do
+def changeset_errors(changeset = %Changeset{}) do
   Changeset.traverse_errors(changeset, fn {msg, opts} ->
     Enum.reduce(opts, msg, fn {key, value}, acc ->
       String.replace(acc, "%{#{key}}", to_string(value))
@@ -725,33 +772,39 @@ Inserts a pretty simple, there's not really any chance of concurrency errors exc
 When it comes to updates you probably want to control the transaction boundary.
 
 ```elixir
+@doc """
+Renames a survey given string-keyed map of params.
+
+Params:
+
+ - "id"   : The survey id
+ - "name" : The new name of the survey
+
+Returns {:ok, %{survey: %Scout.Survey{}}} on success, {:error, errors} on failure.
+"""
 def rename_survey(params) do
-  Repo.transaction fn ->
-    with {:ok, cmd} <- RenameSurvey.new(params),
-         survey = %Survey{} <- Repo.one(SurveyQuery.for_update(id: cmd.id)),
-         changeset = %{valid?: true} <- Survey.rename_changeset(survey, cmd),
-         {:ok, survey} <- Repo.update(changeset) do
-      survey
-    else
-      {:error, changeset} -> Repo.rollback(ErrorHelpers.changeset_errors(changeset))
-    end
+  with {:ok, cmd} <- RenameSurvey.new(params) do
+    RenameSurvey.run(cmd)
+  else
+    {:error, changeset} -> {:error, ErrorHelpers.changeset_errors(changeset)}
   end
 end
 ```
-
-Note that on the happy path `survey` isn't wrapped in an `{:ok, survey}` tuple, and on the error path we use `rollback` with the error list.  This is because `transaction` does this automatically.
-
-Gotcha! The only way to propagate error info out of a transaction is to call `rollback` explicitly.
-Without `Repo.rollback` the error is always `{:error, :rollback}` which is not very informative.
 
 The `RenameSurvey` command is quite simple:
 
 ```elixir
 defmodule Scout.Commands.RenameSurvey do
+  @moduledoc """
+  Defines the schema and validations for a RenameSurvey command.
+  """
+
   use Ecto.Schema
 
   alias Ecto.Changeset
-  alias Scout.Util.ValidationHelpers
+  alias Scout.Commands.RenameSurvey
+  alias Scout.Util.{ErrorHelpers, ValidationHelpers}
+  alias Scout.{Repo, Survey, SurveyQuery}
 
   @primary_key false
   embedded_schema do
@@ -759,6 +812,15 @@ defmodule Scout.Commands.RenameSurvey do
     field :name, :string
   end
 
+  @doc """
+  Create a new RenameSurvey struct from string-keyed map of params
+
+  If validations fails, result is `{:error, errors}`, otherwise returns {:ok, struct}
+   - "id" is required and must b a uuid
+   - "name" is required
+
+  returns {:error, errors} on validation failure, {:ok, struct} otherwise.
+  """
   def new(params) do
     with cs = %{valid?: true} <- validate(params) do
       {:ok, Changeset.apply_changes(cs)}
@@ -768,13 +830,40 @@ defmodule Scout.Commands.RenameSurvey do
   end
 
   defp validate(params) do
-    %__MODULE__{}
+    %RenameSurvey{}
     |> Changeset.cast(params, [:id, :name])
     |> Changeset.validate_required([:id, :name])
     |> Changeset.validate_change(:id, &ValidationHelpers.validate_uuid/2)
   end
+
+  @doc """
+  Runs a RenameSurvey command in a transaction.
+
+  Returns {:ok, %{survey: %Survey{}}} on sucess, {:error, errors} otherwise.
+
+  This implementation demonstrates the usage of Repo.transaction and Repo.rollback
+
+  Unlike the `CreateSurvey` and `AddSurveyResponse` commands, this command module interacts with
+  the repo directly so that it can manage the transaction scope.
+  """
+  def run(cmd = %RenameSurvey{}) do
+    Repo.transaction fn ->
+      with survey = %Survey{} <- Repo.one(SurveyQuery.for_update(id: cmd.id)),
+           changeset <- Survey.rename_changeset(survey, cmd),
+           {:ok, survey} <- Repo.update(changeset) do
+        %{survey: survey}
+      else
+        {:error, changeset} -> Repo.rollback(ErrorHelpers.changeset_errors(changeset))
+      end
+    end
+  end
 end
 ```
+
+Note that on the happy path `survey` isn't wrapped in an `{:ok, survey}` tuple, and on the error path we use `rollback` with the error list.  This is because `transaction` does this automatically.
+
+Gotcha! The only way to propagate error info out of a transaction is to call `rollback` explicitly.
+Without `Repo.rollback` the error is always `{:error, :rollback}` which is not very informative.
 
 SurveyQuery.for_update uses the `Ecto.Query.from` `lock` keyword:
 
@@ -788,6 +877,9 @@ end
 Note the pattern matching ensures the `id` matches in both structs.
 
 ```elixir
+@doc """
+Given a validated UpdateSurvey struct, creates a changeset that will rename the survey
+"""
 def rename_changeset(survey = %Survey{id: id}, %RenameSurvey{id: id, name: name}) do
   survey
   |> Changeset.change(name: name)

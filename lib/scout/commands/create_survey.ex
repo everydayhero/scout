@@ -23,10 +23,11 @@ defmodule Scout.Commands.CreateSurvey do
   If validations fails, result is `{:error, %Changeset{}}`, otherwise returns {:ok, %CreateSurvey{}}
   """
   def new(params) do
-    with cs = %{valid?: true} <- validate(params) do
-      {:ok, Changeset.apply_changes(cs)}
+    changeset = validate(params)
+    if changeset.valid? do
+      {:ok, Changeset.apply_changes(changeset)}
     else
-      changeset -> {:error, changeset}
+      {:error, changeset}
     end
   end
 
