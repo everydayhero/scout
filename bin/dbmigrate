@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+MIX_ENV=${MIX_ENV:-dev}
+DOCKER_PROD_DATABASE_URL="postgres://postgres:password@postgres/scout"
+
+case $MIX_ENV in
+  prod)
+    docker-compose -f docker/docker-compose.yml run --rm \
+      -e MIX_ENV=$MIX_ENV \
+      -e DATABASE_URL=${DATABASE_URL:-$DOCKER_PROD_DATABASE_URL} \
+      elixir mix do ecto.create --quiet, ecto.migrate
+      ;;
+  *)
+    docker-compose -f docker/docker-compose.yml run --rm \
+      -e MIX_ENV=$MIX_ENV \
+      elixir mix do ecto.create --quiet, ecto.migrate
+      ;;
+esac

@@ -42,5 +42,5 @@ config :scout, Scout.Repo,
   username: "postgres",
   password: "password",
   database: "scout_dev",
-  hostname: "localhost",
+  hostname: "postgres",
   pool_size: 10

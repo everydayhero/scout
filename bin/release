@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+docker-compose -f docker/docker-compose.yml run \
+  -e MIX_ENV=${MIX_ENV:-prod} \
+  -e COOKIE=$COOKIE \
+  elixir mix release
+
+docker build -f docker/Dockerfile -t mbuhot/scout .

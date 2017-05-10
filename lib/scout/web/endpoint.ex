@@ -1,8 +1,6 @@
 defmodule Scout.Web.Endpoint do
   use Phoenix.Endpoint, otp_app: :scout
 
-  socket "/socket", Scout.Web.UserSocket
-
   # Serve at "/" the static files from "priv/static" directory.
   #
   # You should set gzip to true if you are running phoenix.digest
@@ -46,7 +44,17 @@ defmodule Scout.Web.Endpoint do
   and must return the updated configuration.
   """
   def load_from_system_env(config) do
+    host = System.get_env("HOST") || raise "expected the HOST environment variable to be set"
     port = System.get_env("PORT") || raise "expected the PORT environment variable to be set"
-    {:ok, Keyword.put(config, :http, [:inet6, port: port])}
+
+    http = Keyword.merge(config[:http], [port: port])
+    url = Keyword.merge(config[:url], [host: host, port: port])
+
+    config =
+      config
+      |> Keyword.put(:http, http)
+      |> Keyword.put(:url, url)
+
+    {:ok, config}
   end
 end

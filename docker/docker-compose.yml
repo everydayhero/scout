@@ -1,0 +1,33 @@
+version: '2'
+
+volumes:
+  build:
+    driver: local
+
+services:
+  postgres:
+    image: postgres:9.5
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+
+  elixir:
+    image: elixir:1.4
+    volumes:
+      - ..:/app
+      - ../.mix:/root/.mix
+      - build:/app/_build
+      - ../releases:/app/_build/prod/rel/scout/releases
+    working_dir: /app
+    links:
+      - postgres
+
+  scout:
+    image: mbuhot/scout
+    environment:
+      - DATABASE_URL=postgres://postgres:password@postgres/scout
+      - HOST=scout.com
+    links:
+      - postgres
+    ports:
+      - 8080:8080
