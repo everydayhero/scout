@@ -4,7 +4,5 @@ set -euo pipefail
 
 docker-compose -f docker/docker-compose.yml run --rm \
   -e MIX_ENV=dev \
-  -e HOST=localhost \
-  -e PORT=8080 \
   -p 8080:8080 \
   elixir mix phx.server
