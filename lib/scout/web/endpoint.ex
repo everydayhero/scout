@@ -5,9 +5,9 @@ defmodule Scout.Web.Endpoint do
   #
   # You should set gzip to true if you are running phoenix.digest
   # when deploying your static files in production.
-  plug Plug.Static,
-    at: "/", from: :scout, gzip: false,
-    only: ~w(css fonts images js favicon.ico robots.txt)
+  # plug Plug.Static,
+  #   at: "/", from: :scout, gzip: false,
+  #   only: ~w(css fonts images js favicon.ico robots.txt)
 
   # Code reloading can be explicitly enabled under the
   # :code_reloader configuration of your endpoint.
@@ -46,13 +46,11 @@ defmodule Scout.Web.Endpoint do
   def load_from_system_env(config) do
     host = System.get_env("HOST") || raise "expected the HOST environment variable to be set"
     port = System.get_env("PORT") || raise "expected the PORT environment variable to be set"
-
-    http = Keyword.merge(config[:http], [port: port])
     url = Keyword.merge(config[:url], [host: host, port: port])
 
     config =
       config
-      |> Keyword.put(:http, http)
+      |> Keyword.put(:http, [port: port])
       |> Keyword.put(:url, url)
 
     {:ok, config}

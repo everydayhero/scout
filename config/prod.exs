@@ -15,7 +15,8 @@ use Mix.Config
 # which you typically run after static files are built.
 config :scout, Scout.Web.Endpoint,
   url: [host: {:system, "HOST"}, port: {:system, "PORT"}],
-  cache_static_manifest: "priv/static/cache_manifest.json"
+  on_init: {Scout.Web.Endpoint, :load_from_system_env, []},
+  server: true
 
 # Do not print debug messages in production
 config :logger, level: :info

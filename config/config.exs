@@ -12,7 +12,7 @@ config :scout,
 
 # Configures the endpoint
 config :scout, Scout.Web.Endpoint,
-  url: [host: "localhost", path: "/"],
+  url: [host: "localhost"],
   on_init: {Scout.Web.Endpoint, :load_from_system_env, []},
   secret_key_base: "R2bKnt1Q6y27lyEECifkZBtCTfZkBkvEWOJRD3oHGUZY+OKRFi6+lQP+UvGqPL05",
   render_errors: [view: Scout.Web.ErrorView, accepts: ~w(json)],
