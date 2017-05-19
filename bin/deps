@@ -2,4 +2,4 @@
 
 set -euo pipefail
 
-bin/mix deps.get
+bin/mix do local.hex --force, local.rebar --force, deps.get
