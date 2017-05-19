@@ -1,6 +1,0 @@
-#!/usr/bin/env bash
-
-set -euo pipefail
-
-docker-compose -f docker/docker-compose.yml up -d postgres
-bin/mix do local.hex --force, local.rebar --force

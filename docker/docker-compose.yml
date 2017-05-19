@@ -1,4 +1,4 @@
-version: '2'
+version: '2.1'
 
 volumes:
   build:
@@ -10,15 +10,27 @@ services:
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=password
+    healthcheck:
+      test: ["CMD-SHELL", "psql -h 'localhost' -U 'postgres' -c '\\l'"]
+      interval: 30s
+      timeout: 30s
+      retries: 3
 
   elixir:
     image: elixir:1.4
+    environment:
+      - MIX_ENV
+      - DATABASE_URL
+      - COOKIE
     volumes:
       - ..:/app
       - ../.mix:/root/.mix
       - build:/app/_build
       - ../releases:/app/_build/prod/rel/scout/releases
     working_dir: /app
+    depends_on:
+      postgres:
+        condition: service_healthy
     links:
       - postgres
 
@@ -27,6 +39,9 @@ services:
     environment:
       - DATABASE_URL=postgres://postgres:password@postgres/scout
       - HOST=scout.com
+    depends_on:
+      postgres:
+        condition: service_healthy
     links:
       - postgres
     ports:
