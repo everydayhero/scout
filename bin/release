@@ -2,9 +2,10 @@
 
 set -euo pipefail
 
-docker-compose -f docker/docker-compose.yml run \
-  -e MIX_ENV=${MIX_ENV:-prod} \
-  -e COOKIE=$COOKIE \
-  elixir mix release
+MIX_ENV=${MIX_ENV:-prod}
 
-docker build -f docker/Dockerfile -t mbuhot/scout .
+MIX_ENV=${MIX_ENV} bin/mix release
+
+if [ $MIX_ENV = "prod" ]; then
+  docker build -f docker/Dockerfile -t mbuhot/scout .
+fi

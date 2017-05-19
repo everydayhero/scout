@@ -1,6 +1,5 @@
 FROM everydayhero/ubuntu:16.04
 
-ENV MIX_ENV prod
 ENV PORT 8080
 EXPOSE 8080
 
