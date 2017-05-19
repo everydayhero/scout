@@ -2,7 +2,4 @@
 
 set -euo pipefail
 
-docker-compose -f docker/docker-compose.yml run --rm \
-  -e MIX_ENV=dev \
-  -p 8080:8080 \
-  elixir mix phx.server
+MIX_ENV=dev docker-compose -f docker/docker-compose.yml run --rm -p 8080:8080 elixir mix phx.server
