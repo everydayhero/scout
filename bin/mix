@@ -2,6 +2,4 @@
 
 set -euo pipefail
 
-docker-compose -f docker/docker-compose.yml run --rm \
-  -e MIX_ENV=${MIX_ENV:-dev} \
-  elixir mix $@
+docker-compose -f docker/docker-compose.yml run --rm elixir mix $@
