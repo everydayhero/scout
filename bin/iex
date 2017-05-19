@@ -2,6 +2,8 @@
 
 set -euo pipefail
 
-docker-compose -f docker/docker-compose.yml run --rm \
-  -e MIX_ENV=${MIX_ENV:-dev} \
-  elixir iex -S mix
+if [ $# = 0 ]; then
+  set -- -S mix
+fi
+
+docker-compose -f docker/docker-compose.yml run --rm elixir iex $@
