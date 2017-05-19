@@ -1,5 +1,6 @@
 FROM everydayhero/ubuntu:16.04
 
+ENV REPLACE_OS_VARS true
 ENV PORT 8080
 EXPOSE 8080
 
