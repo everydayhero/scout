@@ -2,6 +2,64 @@
 
 Protoss unit highly skilled at conducting Surveys.
 
+## Build instructions
+
+Prerequisites: Docker (tested with Docker for Mac)
+
+Fetch dependencies:
+
+```
+./bin/deps
+```
+
+Compile source code:
+
+```
+./bin/compile
+```
+
+Run unit tests:
+
+```
+./bin/test
+```
+
+Run database migrations:
+
+```
+./bin/dbmigrate
+```
+
+Start iex console:
+
+```
+./bin/iex
+```
+
+Start a local server, listening on local port 4000:
+
+```
+./bin/dev
+```
+
+Build a docker image:
+
+```
+./bin/release
+```
+
+Run the release docker image:
+
+```
+./bin/scout
+```
+
+Run a mix task:
+
+```
+./bin/mix test --trace
+```
+
 
 # Learning Objectives
 
