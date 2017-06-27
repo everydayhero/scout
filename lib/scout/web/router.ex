@@ -9,5 +9,6 @@ defmodule Scout.Web.Router do
     pipe_through :api
 
     post "/surveys", SurveyController, :create
+    get "/surveys/:id", SurveyShowPlug, :show, as: :survey
   end
 end
