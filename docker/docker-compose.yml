@@ -21,7 +21,6 @@ services:
     environment:
       - MIX_ENV
       - DATABASE_URL
-      - COOKIE
     volumes:
       - ..:/app
       - ../.mix:/root/.mix
@@ -35,7 +34,7 @@ services:
       - postgres
 
   scout:
-    image: mbuhot/scout
+    image: everydayhero/scout
     environment:
       - DATABASE_URL=postgres://postgres:password@postgres/scout
       - HOST=scout.com

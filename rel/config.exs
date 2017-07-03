@@ -14,7 +14,7 @@ end
 environment :prod do
   set include_erts: true
   set include_src: false
-  set cookie: System.get_env("COOKIE") |> String.to_atom()
+  set cookie: :prod # TODO: override this with an env var in vm.args
 end
 
 release :scout do
