@@ -11,25 +11,26 @@ Prerequisites: Docker (tested with Docker for Mac)
 Fetch dependencies:
 
 ```
-./bin/deps
+./bin/mix deps.get
 ```
 
 Compile source code:
 
 ```
-./bin/compile
+./bin/mix compile
 ```
 
 Run unit tests:
 
 ```
-./bin/test
+./bin/mix test
 ```
 
 Run database migrations:
 
 ```
-./bin/dbmigrate
+MIX_ENV=dev ./bin/dbmigrate
+MIX_ENV=prod ./bin/dbmigrate
 ```
 
 Start iex console:
@@ -790,7 +791,7 @@ commit []
    survey: #Ecto.Association.NotLoaded<association :survey is not loaded>,
    inserted_at: %DateTime{...},
    updated_at: %DateTime{...}}],
- inserted_at: %DateTime{...},  
+ inserted_at: %DateTime{...},
  updated_at: %DateTime{...}}
 }
 ```

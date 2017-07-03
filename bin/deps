@@ -1,5 +1,0 @@
-#!/usr/bin/env bash
-
-set -euo pipefail
-
-bin/mix do local.hex --force, local.rebar --force, deps.get
