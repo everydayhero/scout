@@ -1,4 +1,5 @@
-FROM everydayhero/ubuntu:16.04
+FROM alpine:3.6
+RUN apk add --no-cache openssl ncurses-libs
 
 ENV REPLACE_OS_VARS true
 ENV PORT 8080
