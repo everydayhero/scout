@@ -1,4 +1,4 @@
-  defmodule Scout.Commands.AddSurveyResponse do
+defmodule Scout.Commands.AddSurveyResponse do
   use Ecto.Schema
 
   alias Ecto.{Changeset, Multi}
@@ -44,6 +44,5 @@
     Multi.new()
     |> Multi.insert(:response, Response.insert_changeset(cmd))
     |> Multi.update(:survey, Survey.increment_response_count_changeset(survey))
-    # |> Multi.update_all(:survey2, Survey.increment_response_count_query(id: survey.id), [])
   end
 end
