@@ -47,9 +47,12 @@ defmodule Scout.Commands.Command do
 
     {node, [validation_ast | validators]}
   end
-  defp validation_visitor(node, validators), do: {node, validators}
+  defp validation_visitor(node, accumulator), do: {node, accumulator}
 
-  defp attribute_visitor({:attr, _meta, [name, type, declared_validations]}, {field_names, validation_funcs}) do
+  defp attribute_visitor(
+    {:attr, _meta, [name, type, declared_validations]},
+    [field_names: field_names, validation_asts: validation_funcs]
+  ) do
     {_ast, validators_for_field} = Macro.postwalk(declared_validations, [], &validation_visitor/2)
 
     validation_func_ast = quote do
@@ -67,15 +70,22 @@ defmodule Scout.Commands.Command do
       field unquote(name), unquote(type)
     end
 
-    {field_ast, {[name | field_names], [validation_func_ast | validation_funcs]}}
+    {
+      field_ast,
+      [field_names: [name | field_names], validation_asts: [validation_func_ast | validation_funcs]]
+    }
   end
-  defp attribute_visitor(node, validation_funcs), do: {node, validation_funcs}
+  defp attribute_visitor(node, accumulator), do: {node, accumulator}
 
   defmacro command(do: attributes) do
     {
       fields_ast,
-      {field_names, validation_asts}
-    } = Macro.postwalk(attributes, {[], []}, &attribute_visitor/2)
+      [field_names: field_names, validation_asts: validation_asts]
+    } = Macro.postwalk(
+      attributes,
+      [field_names: [], validation_asts: []],
+      &attribute_visitor/2
+    )
 
     quote do
       @type t :: %__MODULE__{}
