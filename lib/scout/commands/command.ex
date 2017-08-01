@@ -1,5 +1,6 @@
 defmodule Scout.Commands.Command do
   alias Ecto.Changeset
+  alias Scout.Util.ValidationHelpers
 
   defmacro __using__(_opts) do
     quote do
@@ -9,11 +10,11 @@ defmodule Scout.Commands.Command do
     end
   end
 
-  defp validation_visitor(node = {:custom, args}, validators) do
+  defp validation_visitor(node = {:validate, args}, validators) do
     validation_ast = quote do
       custom_validation_func = unquote(args)
       fn
-        (changeset, prop) -> Changeset.validate_change(changeset, prop, custom_validation_func)
+        (changeset, field) -> Changeset.validate_change(changeset, field, custom_validation_func)
       end
     end
 
@@ -22,7 +23,7 @@ defmodule Scout.Commands.Command do
   defp validation_visitor(node = {:format, args}, validators) do
     validation_ast = quote do
       fn
-        (changeset, prop) -> Changeset.validate_format(changeset, prop, unquote(args))
+        (changeset, field) -> Changeset.validate_format(changeset, field, unquote(args))
       end
     end
 
@@ -31,16 +32,16 @@ defmodule Scout.Commands.Command do
   defp validation_visitor(node = {:length, args}, validators) do
     validation_ast = quote do
       fn
-        (changeset, prop) -> Changeset.validate_length(changeset, prop, unquote(args))
+        (changeset, field) -> Changeset.validate_length(changeset, field, unquote(args))
       end
     end
 
     {node, [validation_ast | validators]}
   end
-  defp validation_visitor(node = :required, validators) do
+  defp validation_visitor(node = {:required, true}, validators) do
     validation_ast = quote do
       fn
-        (changeset, prop) -> Changeset.validate_required(changeset, prop)
+        (changeset, field) -> Changeset.validate_required(changeset, field)
       end
     end
 
@@ -49,15 +50,15 @@ defmodule Scout.Commands.Command do
   defp validation_visitor(node, validators), do: {node, validators}
 
   defp attribute_visitor({:attr, _meta, [name, type, declared_validations]}, {field_names, validation_funcs}) do
-    {_ast, validators_for_prop} = Macro.postwalk(declared_validations, [], &validation_visitor/2)
+    {_ast, validators_for_field} = Macro.postwalk(declared_validations, [], &validation_visitor/2)
 
     validation_func_ast = quote do
       fn changeset ->
         Enum.reduce(
-          unquote(validators_for_prop),
+          unquote(validators_for_field),
           changeset,
-          fn vfp, cs ->
-            vfp.(cs, unquote(name))
+          fn validator, changeset ->
+            validator.(changeset, unquote(name))
           end
         )
       end
@@ -70,7 +71,7 @@ defmodule Scout.Commands.Command do
   end
   defp attribute_visitor(node, validation_funcs), do: {node, validation_funcs}
 
-  defmacro cmd(do: attributes) do
+  defmacro command(do: attributes) do
     {
       fields_ast,
       {field_names, validation_asts}
@@ -83,8 +84,8 @@ defmodule Scout.Commands.Command do
       end
 
       def new(params) do
-        with cs = %{valid?: true} <- validate(params) do
-          {:ok, Changeset.apply_changes(cs)}
+        with changeset = %{valid?: true} <- validate(params) do
+          {:ok, Changeset.apply_changes(changeset)}
         else
           changeset -> {:error, changeset}
         end
@@ -92,8 +93,8 @@ defmodule Scout.Commands.Command do
 
       defp validate(params) do
         %__MODULE__{}
-        |> Changeset.cast(params, unquote(field_names))
-        |> Scout.Util.ValidationHelpers.validate_all(unquote(validation_asts))
+        |> Changeset.cast(Map.new(params), unquote(field_names))
+        |> ValidationHelpers.validate_all(unquote(validation_asts))
       end
     end
   end
