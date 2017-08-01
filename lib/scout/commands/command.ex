@@ -78,11 +78,13 @@ defmodule Scout.Commands.Command do
     } = Macro.postwalk(attributes, {[], []}, &attribute_visitor/2)
 
     quote do
+      @type t :: %__MODULE__{}
       @primary_key false
       embedded_schema do
         unquote(fields_ast)
       end
 
+      @spec new(Enumerable.t) :: {:ok, t} | {:error, Changeset.t}
       def new(params) do
         with changeset = %{valid?: true} <- validate(params) do
           {:ok, Changeset.apply_changes(changeset)}
@@ -91,6 +93,7 @@ defmodule Scout.Commands.Command do
         end
       end
 
+      @spec validate(Enumerable.t) :: Changeset.t
       defp validate(params) do
         %__MODULE__{}
         |> Changeset.cast(Map.new(params), unquote(field_names))
