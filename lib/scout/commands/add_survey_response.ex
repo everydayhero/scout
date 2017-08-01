@@ -5,10 +5,10 @@ defmodule Scout.Commands.AddSurveyResponse do
   alias Scout.Util.ValidationHelpers
   alias Scout.{Response, Survey}
 
-  cmd do
-    attr :survey_id, :binary_id, [:required, {:custom, &ValidationHelpers.validate_uuid/2}]
-    attr :respondant_email, :string, [:required, {:format, ~r/@/}]
-    attr :answers, {:array, :string}, [:required]
+  command do
+    attr :survey_id, :binary_id, required: true, validate: &ValidationHelpers.validate_uuid/2
+    attr :respondant_email, :string, required: true, format: ~r/@/
+    attr :answers, {:array, :string}, required: true
   end
 
   @doc """
