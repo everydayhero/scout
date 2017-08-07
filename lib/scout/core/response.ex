@@ -1,6 +1,6 @@
 defmodule Scout.Response do
   use Ecto.Schema
-  
+
   alias Ecto.Changeset
   alias Scout.Response
   alias Scout.Commands.AddSurveyResponse
