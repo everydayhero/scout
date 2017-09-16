@@ -4,39 +4,17 @@ defmodule Scout.Commands.CreateSurvey do
   Note that this doesn't define the database schema, only the structure of the external params payload.
   """
 
-  use Ecto.Schema
+  use Scout.Commands.Command
 
-  alias Ecto.{Changeset, Multi}
+  alias Ecto.Multi
   alias Scout.Commands.{CreateSurvey, EmbeddedQuestion}
   alias Scout.Util.ValidationHelpers
   alias Scout.Survey
 
-  @primary_key false
-  embedded_schema do
-    field :owner_id, :string
-    field :name, :string
-    embeds_many :questions, EmbeddedQuestion
-  end
-
-  @doc """
-  Create a new CreateSurvey struct from string-keyed map of params
-  If validations fails, result is `{:error, %Changeset{}}`, otherwise returns {:ok, %CreateSurvey{}}
-  """
-  def new(params) do
-    changeset = validate(params)
-    if changeset.valid? do
-      {:ok, Changeset.apply_changes(changeset)}
-    else
-      {:error, changeset}
-    end
-  end
-
-  defp validate(params) do
-    %CreateSurvey{}
-    |> Changeset.cast(params, [:owner_id, :name])
-    |> Changeset.validate_required([:owner_id, :name])
-    |> Changeset.validate_change(:owner_id, &ValidationHelpers.validate_uuid/2)
-    |> Changeset.cast_embed(:questions, required: true, with: &EmbeddedQuestion.validate_question/2)
+  command do
+    attr :owner_id, :string, required: true, validate: &ValidationHelpers.validate_uuid/2
+    attr :name, :string, required: true
+    many :questions, EmbeddedQuestion, required: true
   end
 
   @doc """

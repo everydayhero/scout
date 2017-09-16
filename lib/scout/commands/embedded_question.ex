@@ -3,24 +3,14 @@ defmodule Scout.Commands.EmbeddedQuestion do
   Defines the schema and validations for a survey question that may be embedded within another command.
   """
 
-  use Ecto.Schema
-  alias Ecto.Changeset
+  use Scout.Commands.Command
 
-  @primary_key false
-  embedded_schema do
-    field :question, :string
-    field :answer_format, :string
-    field :options, {:array, :string}
-  end
+  command do
+    attr :question, :string, required: true
+    attr :answer_format, :string, required: true
+    attr :options, {:array, :string}
 
-  @doc """
-  Validation function that may be used in a call to Changeset.cast_assoc, or Changeset.cast_embed
-  """
-  def validate_question(schema, params) do
-    schema
-    |> Changeset.cast(params, [:question, :answer_format, :options])
-    |> Changeset.validate_required([:question, :answer_format])
-    |> validate_options()
+    validate &validate_options/1
   end
 
   @doc """
