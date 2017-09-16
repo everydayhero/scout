@@ -78,6 +78,21 @@ defmodule Scout.Commands.Command do
     }
   end
   defp attribute_visitor(
+    {:validate, _meta, [changeset_validation_func_ast]},
+    [field_names: field_names, validation_asts: validation_funcs]
+  ) do
+    {
+      quote do {} end,
+      [field_names: field_names, validation_asts: [changeset_validation_func_ast | validation_funcs]]
+    }
+  end
+  defp attribute_visitor(
+    {:attr, meta, [name, type]},
+    acc
+  ) do
+    attribute_visitor({:attr, meta, [name, type, []]}, acc)
+  end
+  defp attribute_visitor(
     {:attr, _meta, [name, type, declared_validations]},
     [field_names: field_names, validation_asts: validation_funcs]
   ) do
