@@ -3,40 +3,42 @@ defmodule Scout.Commands.CreateSurvey do
   Defines the schema and validations for the parameters required to create a new survey.
   Note that this doesn't define the database schema, only the structure of the external params payload.
   """
+  defmodule Question do
+    use Scout.Commands.Command
 
-  use Ecto.Schema
+    command do
+      attr :question, :string, required: true
+      attr :answer_format, :string, required: true
+      attr :options, {:array, :string}
 
-  alias Ecto.{Changeset, Multi}
-  alias Scout.Commands.{CreateSurvey, EmbeddedQuestion}
-  alias Scout.Util.ValidationHelpers
-  alias Scout.Survey
+      validate &validate_options/1
+    end
 
-  @primary_key false
-  embedded_schema do
-    field :owner_id, :string
-    field :name, :string
-    embeds_many :questions, EmbeddedQuestion
-  end
-
-  @doc """
-  Create a new CreateSurvey struct from string-keyed map of params
-  If validations fails, result is `{:error, %Changeset{}}`, otherwise returns {:ok, %CreateSurvey{}}
-  """
-  def new(params) do
-    changeset = validate(params)
-    if changeset.valid? do
-      {:ok, Changeset.apply_changes(changeset)}
-    else
-      {:error, changeset}
+    def validate_options(cs = %Changeset{}) do
+      case Changeset.get_field(cs, :answer_format) do
+        "check" ->
+          cs
+          |> Changeset.validate_required(:options)
+          |> Changeset.validate_length(:options, min: 1)
+        fmt when fmt in ["select", "radio"] ->
+          cs
+          |> Changeset.validate_required(:options)
+          |> Changeset.validate_length(:options, min: 2)
+        _ -> cs
+      end
     end
   end
 
-  defp validate(params) do
-    %CreateSurvey{}
-    |> Changeset.cast(params, [:owner_id, :name])
-    |> Changeset.validate_required([:owner_id, :name])
-    |> Changeset.validate_change(:owner_id, &ValidationHelpers.validate_uuid/2)
-    |> Changeset.cast_embed(:questions, required: true, with: &EmbeddedQuestion.validate_question/2)
+  use Scout.Commands.Command
+
+  alias Ecto.Multi
+  alias Scout.Util.ValidationHelpers
+  alias Scout.Survey
+
+  command do
+    attr :owner_id, :string, required: true, validate: &ValidationHelpers.validate_uuid/2
+    attr :name, :string, required: true
+    many :questions, Question, required: true
   end
 
   @doc """
@@ -45,7 +47,7 @@ defmodule Scout.Commands.CreateSurvey do
   Returns an Ecto.Multi representing the operation/s that must happen to create a new Survey.
   The multi should be run by the callng code using Repo.transaction or merged into a larger Multi as needed.
   """
-  def run(cmd = %CreateSurvey{}) do
+  def run(cmd = %__MODULE__{}) do
     Multi.new()
     |> Multi.insert(:survey, Survey.insert_changeset(cmd))
   end

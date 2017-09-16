@@ -49,6 +49,49 @@ defmodule Scout.Commands.Command do
   end
   defp validation_visitor(node, accumulator), do: {node, accumulator}
 
+  defp attribute_visitor({:many, meta, params = [_name, _command_type]}, acc) do
+    attribute_visitor({:many, meta, params ++ [[required: false]]}, acc)
+  end
+  defp attribute_visitor(
+    {:many, _meta, [name, command_type, [required: required]]},
+    [field_names: field_names, validation_asts: validation_funcs]
+  ) do
+    validation_func_ast = quote do
+      fn
+        (changeset) ->
+          Changeset.cast_embed(
+            changeset,
+            unquote(name),
+            required: unquote(required),
+            with: &unquote(command_type).validate/2
+          )
+      end
+    end
+
+    field_ast = quote do
+      embeds_many unquote(name), unquote(command_type)
+    end
+
+    {
+      field_ast,
+      [field_names: field_names, validation_asts: [validation_func_ast | validation_funcs]]
+    }
+  end
+  defp attribute_visitor(
+    {:validate, _meta, [changeset_validation_func_ast]},
+    [field_names: field_names, validation_asts: validation_funcs]
+  ) do
+    {
+      quote do {} end,
+      [field_names: field_names, validation_asts: [changeset_validation_func_ast | validation_funcs]]
+    }
+  end
+  defp attribute_visitor(
+    {:attr, meta, [name, type]},
+    acc
+  ) do
+    attribute_visitor({:attr, meta, [name, type, []]}, acc)
+  end
   defp attribute_visitor(
     {:attr, _meta, [name, type, declared_validations]},
     [field_names: field_names, validation_asts: validation_funcs]
@@ -104,8 +147,8 @@ defmodule Scout.Commands.Command do
       end
 
       @spec validate(Enumerable.t) :: Changeset.t
-      defp validate(params) do
-        %__MODULE__{}
+      def validate(changeset \\ %__MODULE__{}, params) do
+        changeset
         |> Changeset.cast(Map.new(params), unquote(field_names))
         |> ValidationHelpers.validate_all(unquote(validation_asts))
       end

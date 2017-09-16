@@ -1,15 +1,17 @@
 defmodule Scout.Commands.Command.Test do
   use Scout.DataCase, async: true
   alias Scout.Commands.DummyCommand
+  alias Scout.Commands.DummyChildCommand
 
-  describe "Declared command" do
+  describe "declared command" do
     test "can be newed" do
       {:ok, dummy_command} = DummyCommand.new(
         %{
           name: "name",
           desc: "desc",
           email: "test@test.com",
-          color: "red"
+          color: "red",
+          children: []
         }
       )
 
@@ -17,15 +19,57 @@ defmodule Scout.Commands.Command.Test do
         name: "name",
         desc: "desc",
         email: "test@test.com",
-        color: "red"
+        color: "red",
+        children: []
       } == dummy_command
     end
 
+    test "can have children" do
+      {:ok, dummy_command} = DummyCommand.new(
+        %{
+          name: "name",
+          desc: "desc",
+          email: "test@test.com",
+          color: "red",
+          children: [%{name: "child1"}]
+        }
+      )
+
+      assert %DummyCommand{
+        name: "name",
+        desc: "desc",
+        email: "test@test.com",
+        color: "red",
+        children: [%DummyChildCommand{name: "child1"}]
+      } == dummy_command
+    end
+
+    test "validates children's properties" do
+      {:error, %{changes: %{children: [%{errors: errors}]}}} = DummyCommand.new(
+        %{
+          name: "name",
+          desc: "desc",
+          email: "test@test.com",
+          color: "red",
+          children: [%{}]
+        }
+      )
+
+      assert [
+        name: {"can't be blank",
+          [
+            validation: :required
+          ]
+        },
+      ] == errors
+    end
+
     test "validates required" do
-      {:error, %{errors: errors}}  = DummyCommand.new(
+      {:error, %{errors: errors}} = DummyCommand.new(
         %{
           email: "test@test.com",
-          color: "red"
+          color: "red",
+          children: []
         }
       )
 
@@ -49,7 +93,8 @@ defmodule Scout.Commands.Command.Test do
           name: "name",
           desc: ".",
           email: "test@test.com",
-          color: "red"
+          color: "red",
+          children: []
         }
       )
 
@@ -67,7 +112,8 @@ defmodule Scout.Commands.Command.Test do
           name: "name",
           desc: "desc",
           email: ".",
-          color: "red"
+          color: "red",
+          children: []
         }
       )
 
@@ -85,7 +131,8 @@ defmodule Scout.Commands.Command.Test do
           name: "name",
           desc: "desc",
           email: "test@test.com",
-          color: "blue"
+          color: "blue",
+          children: []
         }
       )
 

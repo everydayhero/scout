@@ -1,3 +1,11 @@
+defmodule Scout.Commands.DummyChildCommand do
+  use Scout.Commands.Command
+
+  command do
+    attr :name, :string, required: true
+  end
+end
+
 defmodule Scout.Commands.DummyCommand do
   use Scout.Commands.Command
 
@@ -6,6 +14,7 @@ defmodule Scout.Commands.DummyCommand do
     attr :desc, :string, required: true, length: [min: 2]
     attr :color, :string, validate: fn f, v -> validate_red(f, v) end
     attr :email, :string, format: ~r/@/
+    many :children, Scout.Commands.DummyChildCommand
   end
 
   def validate_red(_field, "red"), do: []
