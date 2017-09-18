@@ -3,10 +3,11 @@ defmodule Scout.Commands.CreateSurvey do
   Defines the schema and validations for the parameters required to create a new survey.
   Note that this doesn't define the database schema, only the structure of the external params payload.
   """
+
   defmodule Question do
     use Scout.Commands.Command
 
-    command do
+    command_component do
       attr :question, :string, required: true
       attr :answer_format, :string, required: true
       attr :options, {:array, :string}
