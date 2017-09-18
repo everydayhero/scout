@@ -1,7 +1,7 @@
 defmodule Scout.Commands.DummyChildCommand do
   use Scout.Commands.Command
 
-  command do
+  command_component do
     attr :name, :string, required: true
   end
 end

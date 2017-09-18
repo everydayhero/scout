@@ -159,6 +159,35 @@ defmodule Scout.Commands.Command do
     build_type_ast({:__block__, [], [field_ast]}, module)
   end
 
+  defmacro command_component(do: attributes) do
+    {
+      fields_ast,
+      [field_names: field_names, validation_asts: validation_asts]
+    } = Macro.postwalk(
+      attributes,
+      [field_names: [], validation_asts: []],
+      &attribute_visitor/2
+    )
+
+    type_ast = build_type_ast(fields_ast, __CALLER__.module)
+
+    quote do
+      @type t :: unquote(type_ast)
+      @primary_key false
+      embedded_schema do
+        unquote(fields_ast)
+      end
+
+      @spec validate(Changeset.t, Enumerable.t) :: Changeset.t
+      def validate(changeset, params) do
+        changeset
+        |> Changeset.cast(Map.new(params), unquote(field_names))
+        |> ValidationHelpers.validate_all(unquote(validation_asts))
+      end
+
+    end
+  end
+
   defmacro command(do: attributes) do
     {
       fields_ast,
@@ -188,8 +217,8 @@ defmodule Scout.Commands.Command do
       end
 
       @spec validate(Enumerable.t) :: Changeset.t
-      def validate(changeset \\ %__MODULE__{}, params) do
-        changeset
+      defp validate(params) do
+        %__MODULE__{}
         |> Changeset.cast(Map.new(params), unquote(field_names))
         |> ValidationHelpers.validate_all(unquote(validation_asts))
       end
