@@ -49,6 +49,34 @@ defmodule Scout.Commands.Command do
   end
   defp validation_visitor(node, accumulator), do: {node, accumulator}
 
+  defp attribute_visitor({:one, meta, params = [_name, _command_type]}, acc) do
+    attribute_visitor({:one, meta, params ++ [[required: false]]}, acc)
+  end
+  defp attribute_visitor(
+    {:one, _meta, [name, command_type, [required: required]]},
+    [field_names: field_names, validation_asts: validation_funcs]
+  ) do
+    validation_func_ast = quote do
+      fn
+        (changeset) ->
+          Changeset.cast_embed(
+            changeset,
+            unquote(name),
+            required: unquote(required),
+            with: &unquote(command_type).validate/2
+          )
+      end
+    end
+
+    field_ast = quote do
+      embeds_one unquote(name), unquote(command_type)
+    end
+
+    {
+      field_ast,
+      [field_names: field_names, validation_asts: [validation_func_ast | validation_funcs]]
+    }
+  end
   defp attribute_visitor({:many, meta, params = [_name, _command_type]}, acc) do
     attribute_visitor({:many, meta, params ++ [[required: false]]}, acc)
   end
