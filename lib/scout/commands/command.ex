@@ -82,7 +82,7 @@ defmodule Scout.Commands.Command do
     [field_names: field_names, validation_asts: validation_funcs]
   ) do
     {
-      quote do {} end,
+      quote do end,
       [field_names: field_names, validation_asts: [changeset_validation_func_ast | validation_funcs]]
     }
   end
@@ -118,7 +118,46 @@ defmodule Scout.Commands.Command do
       [field_names: [name | field_names], validation_asts: [validation_func_ast | validation_funcs]]
     }
   end
-  defp attribute_visitor(node, accumulator), do: {node, accumulator}
+  defp attribute_visitor({:__block__, meta, fields}, accumulator) do
+    fields = Enum.filter(fields, &!is_nil(&1))
+    {{:__block__, meta, fields}, accumulator}
+  end
+  defp attribute_visitor(node, accumulator) do
+    {node, accumulator}
+  end
+
+  defp ecto_to_typespec(type) do
+    case type do
+      :id -> quote do integer end
+      :binary_id -> quote do String.t end
+      :integer -> quote do integer end
+      :float -> quote do float end
+      :boolean -> quote do boolean end
+      :string -> quote do String.t end
+      :binary -> quote do binary end
+      {:array, t} -> quote do [unquote(ecto_to_typespec(t))] end
+      :map -> quote do %{} end
+      {:map, _} -> quote do %{} end
+      :decimal -> quote do Decimal.t end
+      :date -> quote do Date.t end
+      :time -> quote do Time.t end
+      :naive_datetime -> quote do NaiveDateTime.t end
+      :utc_datetime -> quote do DateTime.t end
+    end
+  end
+
+  defp build_type_ast(fields_ast = {:__block__, _, _}, module) do
+    Macro.postwalk(fields_ast, fn
+      {:field, _, [name, type | _rest]} ->  quote do {unquote(name),  unquote(ecto_to_typespec(type))} end
+      {:embeds_one, _, [name, type | _rest]} -> quote do {unquote(name), unquote(type).t} end
+      {:embeds_many, _, [name, type | _rest]} -> quote do {unquote(name), [unquote(type).t]} end
+      {:__block__, meta, args} -> {:%, [], [module, {:%{}, meta, args}]}
+      node -> node
+    end)
+  end
+  defp build_type_ast(field_ast, module) do
+    build_type_ast({:__block__, [], [field_ast]}, module)
+  end
 
   defmacro command(do: attributes) do
     {
@@ -130,8 +169,10 @@ defmodule Scout.Commands.Command do
       &attribute_visitor/2
     )
 
+    type_ast = build_type_ast(fields_ast, __CALLER__.module)
+
     quote do
-      @type t :: %__MODULE__{}
+      @type t :: unquote(type_ast)
       @primary_key false
       embedded_schema do
         unquote(fields_ast)

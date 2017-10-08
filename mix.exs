@@ -9,6 +9,10 @@ defmodule Scout.Mixfile do
      compilers: [:phoenix, :gettext] ++ Mix.compilers,
      start_permanent: Mix.env == :prod,
      aliases: aliases(),
+     dialyzer: [
+      flags: [:error_handling, :unmatched_returns, :underspecs, :no_opaque],
+      remove_defaults: [:unknown]
+     ],
      deps: deps()]
   end
 
@@ -29,6 +33,7 @@ defmodule Scout.Mixfile do
   # Type `mix help deps` for examples and options.
   defp deps do
     [{:distillery, "~> 1.0"},
+     {:dialyxir, "~> 0.5.1", only: :dev, runtime: false},
      {:phoenix, "~> 1.3.0-rc"},
      {:phoenix_pubsub, "~> 1.0"},
      {:phoenix_ecto, "~> 3.2"},
