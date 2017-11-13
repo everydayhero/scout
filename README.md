@@ -2,6 +2,8 @@
 
 Protoss unit highly skilled at conducting Surveys.
 
+This repo is used for experimentation and as a training tool for elixir development. Also seen at the [Brisbane Elixir Meetup](https://www.meetup.com/brisbane-elixir/)
+
 ## Build instructions
 
 Prerequisites: Docker (tested with Docker for Mac)
