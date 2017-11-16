@@ -13,7 +13,9 @@ defmodule Scout.Repo do
 
   def multi_transaction(multi = %Ecto.Multi{}) do
     case transaction(multi) do
-      {:ok, result} -> {:ok, result}
+      {:ok, result} ->
+        {:ok, result}
+
       {:error, operation, changeset, _changes} ->
         {:error, %{operation => ErrorHelpers.changeset_errors(changeset)}}
     end

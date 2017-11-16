@@ -12,17 +12,17 @@ defmodule Scout.Survey do
   @primary_key {:id, :binary_id, autogenerate: true}
 
   schema "surveys" do
-    field :owner_id, :binary_id
-    field :name, :string
-    field :state, :string
-    field :started_at, :utc_datetime
-    field :finished_at, :utc_datetime
-    field :response_count, :integer
-    field :version, :integer, default: 1
+    field(:owner_id, :binary_id)
+    field(:name, :string)
+    field(:state, :string)
+    field(:started_at, :utc_datetime)
+    field(:finished_at, :utc_datetime)
+    field(:response_count, :integer)
+    field(:version, :integer, default: 1)
     timestamps()
 
-    has_many :questions, Scout.Question
-    has_many :responses, Scout.Response
+    has_many(:questions, Scout.Question)
+    has_many(:responses, Scout.Response)
   end
 
   @doc """
@@ -61,11 +61,12 @@ defmodule Scout.Survey do
   def increment_response_count_changeset(survey = %Survey{response_count: count, state: state}) do
     survey
     |> Changeset.optimistic_lock(:version)
-    |> Changeset.change(response_count: count+1)
+    |> Changeset.change(response_count: count + 1)
     |> validate_survey_running(state)
   end
 
   defp validate_survey_running(changeset, "running"), do: changeset
+
   defp validate_survey_running(changeset, _) do
     Changeset.add_error(changeset, :state, "Survey is not running")
   end
@@ -74,7 +75,7 @@ defmodule Scout.Survey do
     Query.from(
       Survey,
       where: [id: ^id],
-      update: [inc: [response_count: 1],
-               inc: [version: 1]])
+      update: [inc: [response_count: 1], inc: [version: 1]]
+    )
   end
 end
