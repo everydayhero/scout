@@ -2,5 +2,4 @@
 
 set -euo pipefail
 
-bin/mix format ./lib/**/*.ex
-bin/mix format ./test/**/*.ex
+bin/mix format "$@"

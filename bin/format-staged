@@ -1,0 +1,11 @@
+#!/bin/sh
+format_files=$(git diff --cached --name-only --diff-filter=ACM "*.ex" "*.exs" | tr '\n' ' ')
+[ -z "$format_files" ] && exit 0
+
+# Prettify all staged .ex/.exs files
+echo "$format_files" | xargs ./bin/format
+
+# Add back the modified/prettified files to staging
+echo "$format_files" | xargs git add
+
+exit 0
