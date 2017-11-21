@@ -7,9 +7,9 @@ defmodule AddIngredients do
     @units ["tsp", "ml", "pinch", "g"]
 
     command_component do
-      attr(:name, :string, required: true)
-      attr(:quantity, :decimal, required: true)
-      attr(:unit, :string, validate: &validate_unit/2)
+      attr :name, :string, required: true
+      attr :quantity, :decimal, required: true
+      attr :unit, :string, validate: &validate_unit/2
     end
 
     def validate_unit(_field, unit) when unit in @units, do: []
@@ -17,7 +17,7 @@ defmodule AddIngredients do
   end
 
   command do
-    attr(:recipe_id, :binary_id, required: true)
-    many(:ingredients, Ingredient, required: true)
+    attr :recipe_id, :binary_id, required: true
+    many :ingredients, Ingredient, required: true
   end
 end

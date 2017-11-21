@@ -7,6 +7,6 @@ defmodule Scout.Util.ValidationHelpers do
   end
 
   def validate_all(changeset, validation_funcs) when is_list(validation_funcs) do
-    Enum.reduce(validation_funcs, changeset, fn validator, cs -> validator.(cs) end)
+    Enum.reduce(validation_funcs, changeset, fn (validator, cs) -> validator.(cs) end)
   end
 end

@@ -25,13 +25,13 @@ defmodule Scout.Web.ChannelCase do
     end
   end
 
+
   setup tags do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Scout.Repo)
-
     unless tags[:async] do
       Ecto.Adapters.SQL.Sandbox.mode(Scout.Repo, {:shared, self()})
     end
-
     :ok
   end
+
 end
