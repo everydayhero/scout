@@ -8,11 +8,11 @@ defmodule Scout.Commands.CreateSurvey do
     use Scout.Commands.Command
 
     command_component do
-      attr(:question, :string, required: true)
-      attr(:answer_format, :string, required: true)
-      attr(:options, {:array, :string})
+      attr :question, :string, required: true
+      attr :answer_format, :string, required: true
+      attr :options, {:array, :string}
 
-      validate(&validate_options/1)
+      validate &validate_options/1
     end
 
     def validate_options(cs = %Changeset{}) do
@@ -21,14 +21,11 @@ defmodule Scout.Commands.CreateSurvey do
           cs
           |> Changeset.validate_required(:options)
           |> Changeset.validate_length(:options, min: 1)
-
         fmt when fmt in ["select", "radio"] ->
           cs
           |> Changeset.validate_required(:options)
           |> Changeset.validate_length(:options, min: 2)
-
-        _ ->
-          cs
+        _ -> cs
       end
     end
   end
@@ -40,9 +37,9 @@ defmodule Scout.Commands.CreateSurvey do
   alias Scout.Survey
 
   command do
-    attr(:owner_id, :string, required: true, validate: &ValidationHelpers.validate_uuid/2)
-    attr(:name, :string, required: true)
-    many(:questions, Question, required: true)
+    attr :owner_id, :string, required: true, validate: &ValidationHelpers.validate_uuid/2
+    attr :name, :string, required: true
+    many :questions, Question, required: true
   end
 
   @doc """

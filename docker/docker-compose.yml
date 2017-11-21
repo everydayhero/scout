@@ -17,7 +17,7 @@ services:
       retries: 3
 
   elixir:
-    image: aabrook/elixir:latest
+    image: elixir:1.5
     environment:
       - MIX_ENV
       - DATABASE_URL

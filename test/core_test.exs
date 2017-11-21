@@ -11,31 +11,26 @@ defmodule Scout.Core.Test do
   }
 
   def fixture(:survey, params \\ []) do
-    {:ok, %{survey: survey}} =
-      Scout.Core.create_survey(Map.merge(@create_params, Map.new(params)))
-
+    {:ok, %{survey: survey}} = Scout.Core.create_survey(Map.merge(@create_params, Map.new(params)))
     survey
   end
 
   describe "Create survey" do
     test "with valid params" do
       {:ok, %{survey: survey}} = Scout.Core.create_survey(@create_params)
-
       assert %{
-               name: "my survey",
-               owner_id: "3345c1b0-6b91-4fdb-bd90-7c584f7e90eb"
-             } = survey
+        name: "my survey",
+        owner_id: "3345c1b0-6b91-4fdb-bd90-7c584f7e90eb",
+      } = survey
     end
 
     test "with invalid params" do
       assert {
-               :error,
-               %{
-                 name: ["can't be blank"],
-                 owner_id: ["can't be blank"],
-                 questions: ["can't be blank"]
-               }
-             } = Scout.Core.create_survey(%{})
+        :error,
+        %{name: ["can't be blank"],
+          owner_id: ["can't be blank"],
+          questions: ["can't be blank"]}
+     } = Scout.Core.create_survey(%{})
     end
   end
 
@@ -50,8 +45,7 @@ defmodule Scout.Core.Test do
     end
 
     test "with invalid ID" do
-      assert {:error, %{id: "Survey not found"}} =
-               Scout.Core.find_survey_by_id(Ecto.UUID.generate())
+      assert {:error, %{id: "Survey not found"}} = Scout.Core.find_survey_by_id(Ecto.UUID.generate())
     end
 
     test "with wrong data type" do
@@ -69,12 +63,12 @@ defmodule Scout.Core.Test do
 
     test "by owner" do
       results = Scout.Core.find_surveys(%{"owner" => "3345c1b0-6b91-4fdb-bd90-7c584f7e90eb"})
-      assert ["AA", "AB"] = results |> Enum.map(&Map.get(&1, :name)) |> Enum.sort()
+      assert ["AA", "AB"] = (results |> Enum.map(&Map.get(&1, :name)) |> Enum.sort())
     end
 
     test "by name" do
       results = Scout.Core.find_surveys(%{"name" => "A%"})
-      assert ["AA", "AB"] = results |> Enum.map(&Map.get(&1, :name)) |> Enum.sort()
+      assert ["AA", "AB"] = (results |> Enum.map(&Map.get(&1, :name)) |> Enum.sort())
     end
 
     test "with invalid params" do
@@ -96,9 +90,7 @@ defmodule Scout.Core.Test do
     test "to a name that is taken", %{survey: %{id: id}} do
       fixture(:survey, %{"name" => "Taken"})
       rename_params = %{"id" => id, "name" => "Taken"}
-
-      assert {:error, %{name: ["has already been taken"]}} =
-               Scout.Core.rename_survey(rename_params)
+      assert {:error, %{name: ["has already been taken"]}} = Scout.Core.rename_survey(rename_params)
     end
   end
 
@@ -106,13 +98,7 @@ defmodule Scout.Core.Test do
     setup do
       require Ecto.Query, as: Query
       survey = fixture(:survey)
-
-      {1, nil} =
-        Scout.Repo.update_all(
-          Query.where(Scout.Survey, ^[id: survey.id]),
-          set: [state: "running"]
-        )
-
+      {1, nil} = Scout.Repo.update_all(Query.where(Scout.Survey, ^[id: survey.id]), set: [state: "running"])
       %{survey: survey}
     end
 
@@ -122,13 +108,11 @@ defmodule Scout.Core.Test do
         "respondant_email" => "Reece.Pondant@gmail.com",
         "answers" => ["DC"]
       }
-
       assert {:ok, %{response: response}} = Scout.Core.add_survey_response(response_params)
-
       assert %{
-               survey_id: ^id,
-               respondant_email: "Reece.Pondant@gmail.com"
-             } = response
+        survey_id: ^id,
+        respondant_email: "Reece.Pondant@gmail.com"
+      } = response
     end
 
     test "with invalid survey id" do
@@ -137,7 +121,6 @@ defmodule Scout.Core.Test do
         "respondant_email" => "Reece.Pondant@gmail.com",
         "answers" => ["DC"]
       }
-
       assert {:error, %{id: "Survey not found"}} = Scout.Core.add_survey_response(response_params)
     end
 
@@ -147,7 +130,6 @@ defmodule Scout.Core.Test do
         "respondant_email" => "Reece.Pondant@gmail.com",
         "answers" => ["DC"]
       }
-
       assert {:ok, _} = Scout.Core.add_survey_response(response_params)
       assert {:error, details} = Scout.Core.add_survey_response(response_params)
       assert %{response: %{respondant_email: ["has already been taken"]}} = details

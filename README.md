@@ -8,12 +8,6 @@ This repo is used for experimentation and as a training tool for elixir developm
 
 Prerequisites: Docker (tested with Docker for Mac)
 
-Setup pre-commit format hook
-
-```
-./bin/setup
-```
-
 Fetch dependencies:
 
 ```
@@ -796,7 +790,7 @@ commit []
    survey: #Ecto.Association.NotLoaded<association :survey is not loaded>,
    inserted_at: %DateTime{...},
    updated_at: %DateTime{...}}],
- inserted_at: %DateTime{...},
+ inserted_at: %DateTime{...},  
  updated_at: %DateTime{...}}
 }
 ```
