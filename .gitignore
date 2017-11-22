@@ -17,3 +17,6 @@ erl_crash.dump
 /config/*.secret.exs
 releases/
 .mix/
+
+# IDE files
+.elixir_ls/

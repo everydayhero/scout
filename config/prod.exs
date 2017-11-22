@@ -16,7 +16,8 @@ use Mix.Config
 config :scout, Scout.Web.Endpoint,
   url: [host: "${HOST}", port: "${PORT}"],
   on_init: {Scout.Web.Endpoint, :load_from_system_env, []},
-  server: true
+  server: true,
+  secret_key_base: "${SECRET_KEY_BASE}"
 
 # Do not print debug messages in production
 config :logger, level: :info

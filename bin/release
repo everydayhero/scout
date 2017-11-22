@@ -2,10 +2,4 @@
 
 set -euo pipefail
 
-MIX_ENV=${MIX_ENV:-prod}
-
-MIX_ENV=${MIX_ENV} bin/mix release
-
-if [ $MIX_ENV = "prod" ]; then
-  docker build -f docker/Dockerfile -t mbuhot/scout .
-fi
+docker-compose -f docker/docker-compose.yml build scout

@@ -1,12 +1,8 @@
 version: '2.1'
 
-volumes:
-  build:
-    driver: local
-
 services:
   postgres:
-    image: postgres:9.5
+    image: postgres:alpine
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=password
@@ -17,16 +13,16 @@ services:
       retries: 3
 
   elixir:
-    image: elixir:1.5
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.dev
     environment:
       - MIX_ENV
       - DATABASE_URL
-      - COOKIE
+    ports:
+      - "4000:4000"
     volumes:
       - ..:/app
-      - ../.mix:/root/.mix
-      - build:/app/_build
-      - ../releases:/app/_build/prod/rel/scout/releases
     working_dir: /app
     depends_on:
       postgres:
@@ -35,14 +31,21 @@ services:
       - postgres
 
   scout:
-    image: mbuhot/scout
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: everydayhero/scout:latest
     environment:
       - DATABASE_URL=postgres://postgres:password@postgres/scout
       - HOST=scout.com
+      - PORT=8080
+      - REPLACE_OS_VARS=true
+      - SECRET_KEY_BASE=SUPER_SECRET_KEY_BASE
+      - COOKIE=SUPER_SECRET_COOKIE
+    ports:
+      - "8080:8080"
     depends_on:
       postgres:
         condition: service_healthy
     links:
       - postgres
-    ports:
-      - 8080:8080

@@ -1,5 +1,0 @@
-#!/usr/bin/env bash
-
-set -euo pipefail
-
-MIX_ENV=test bin/mix do ecto.create --quiet, ecto.migrate, test
