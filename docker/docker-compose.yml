@@ -1,5 +1,9 @@
 version: '2.1'
 
+volumes:
+  build:
+    driver: local
+
 services:
   postgres:
     image: postgres:alpine
@@ -23,6 +27,7 @@ services:
       - "4000:4000"
     volumes:
       - ..:/app
+      - build:/app/_build
     working_dir: /app
     depends_on:
       postgres:
