@@ -287,7 +287,7 @@ defmodule Scout.Commands.Command do
     [field_names: field_names, validation_asts: validation_funcs]
   ) do
     {
-      quote do end,
+      nil,
       [field_names: field_names, validation_asts: [changeset_validation_func_ast | validation_funcs]]
     }
   end

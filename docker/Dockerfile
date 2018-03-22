@@ -3,7 +3,7 @@
 #--------------
 
 # Create a basic elixir/node build environment
-FROM elixir:1.5-alpine as build
+FROM elixir:1.6-alpine as build
 RUN apk add --update nodejs nodejs-npm
 RUN mix local.hex --force
 RUN mix local.rebar --force
