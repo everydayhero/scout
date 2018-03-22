@@ -11,7 +11,7 @@ defmodule Scout.Application do
       # Start the Ecto repository
       supervisor(Scout.Repo, []),
       # Start the endpoint when the application starts
-      supervisor(Scout.Web.Endpoint, []),
+      supervisor(Scout.Web.Endpoint, [])
       # Start your own worker by calling: Scout.Worker.start_link(arg1, arg2, arg3)
       # worker(Scout.Worker, [arg1, arg2, arg3]),
     ]

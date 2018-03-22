@@ -5,11 +5,11 @@ defmodule Scout.Question do
   @foreign_key_type :binary_id
 
   schema "questions" do
-    belongs_to :survey, Scout.Survey
-    field :display_index, :integer
-    field :question, :string
-    field :answer_format, :string
-    field :options, {:array, :string}
+    belongs_to(:survey, Scout.Survey)
+    field(:display_index, :integer)
+    field(:question, :string)
+    field(:answer_format, :string)
+    field(:options, {:array, :string})
     timestamps()
   end
 end

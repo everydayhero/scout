@@ -11,9 +11,11 @@ defmodule Scout.Repo do
     {:ok, Keyword.put(opts, :url, System.get_env("DATABASE_URL"))}
   end
 
-  def multi_transaction(multi = %Ecto.Multi{}) do
+  def multi_transaction(multi) do
     case transaction(multi) do
-      {:ok, result} -> {:ok, result}
+      {:ok, result} ->
+        {:ok, result}
+
       {:error, operation, changeset, _changes} ->
         {:error, %{operation => ErrorHelpers.changeset_errors(changeset)}}
     end

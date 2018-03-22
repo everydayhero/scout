@@ -66,7 +66,6 @@ defmodule Scout.Core do
     end
   end
 
-
   @doc """
   Renames a survey given string-keyed map of params.
 
