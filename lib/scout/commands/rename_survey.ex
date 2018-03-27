@@ -10,8 +10,8 @@ defmodule Scout.Commands.RenameSurvey do
   alias Scout.{Repo, Survey, SurveyQuery}
 
   command do
-    attr :id, :binary_id, required: true, validate: &ValidationHelpers.validate_uuid/2
-    attr :name, :string, required: true
+    attr(:id, :binary_id, required: true, validate: &ValidationHelpers.validate_uuid/2)
+    attr(:name, :string, required: true)
   end
 
   @doc """
@@ -25,7 +25,7 @@ defmodule Scout.Commands.RenameSurvey do
   the repo directly so that it can manage the transaction scope.
   """
   def run(cmd = %RenameSurvey{}) do
-    Repo.transaction fn ->
+    Repo.transaction(fn ->
       with survey = %Survey{} <- Repo.one(SurveyQuery.for_update(id: cmd.id)),
            changeset <- Survey.rename_changeset(survey, cmd),
            {:ok, survey} <- Repo.update(changeset) do
@@ -33,6 +33,6 @@ defmodule Scout.Commands.RenameSurvey do
       else
         {:error, changeset} -> Repo.rollback(ErrorHelpers.changeset_errors(changeset))
       end
-    end
+    end)
   end
 end

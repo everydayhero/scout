@@ -15,8 +15,7 @@ config :scout, Scout.Web.Endpoint,
   url: [host: "localhost"],
   secret_key_base: "R2bKnt1Q6y27lyEECifkZBtCTfZkBkvEWOJRD3oHGUZY+OKRFi6+lQP+UvGqPL05",
   render_errors: [view: Scout.Web.ErrorView, accepts: ~w(json)],
-  pubsub: [name: Scout.PubSub,
-           adapter: Phoenix.PubSub.PG2]
+  pubsub: [name: Scout.PubSub, adapter: Phoenix.PubSub.PG2]
 
 # Configures Elixir's Logger
 config :logger, :console,
@@ -25,4 +24,4 @@ config :logger, :console,
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
-import_config "#{Mix.env}.exs"
+import_config "#{Mix.env()}.exs"
